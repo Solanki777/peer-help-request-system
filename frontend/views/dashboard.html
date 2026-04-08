@@ -1,0 +1,209 @@
+<div class="container-fluid px-4 py-3">
+
+    <!-- ── STATS ROW ─────────────────────────────────────────────────────────── -->
+    <div class="row mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-card blue">
+                <div class="stat-number">{{stats.totalQuestions || 0}}</div>
+                <div class="stat-label">Total Questions</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card green">
+                <div class="stat-number">{{stats.totalAnswers || 0}}</div>
+                <div class="stat-label">Total Answers</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card orange">
+                <div class="stat-number">{{stats.popularSubject || 'N/A'}}</div>
+                <div class="stat-label">Top Subject</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card purple">
+                <div class="stat-number">{{stats.totalUsers || 0}}</div>
+                <div class="stat-label">Students</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- ── LEFT: MAIN CONTENT ──────────────────────────────────────────────── -->
+        <div class="col-md-8">
+
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold mb-0">📋 Help Requests</h4>
+                <button class="btn btn-primary" ng-click="showForm = !showForm">
+                    <span ng-show="!showForm">+ New Request</span>
+                    <span ng-show="showForm">✕ Cancel</span>
+                </button>
+            </div>
+
+            <!-- Success message -->
+            <div class="alert alert-success alert-dismissible" ng-show="message">
+                {{message}}
+                <button class="btn-close" ng-click="message=''"></button>
+            </div>
+
+            <!-- ── CREATE FORM ──────────────────────────────────────────────────── -->
+            <div class="card mb-3" ng-show="showForm">
+                <div class="card-header">📝 Post a Help Request</div>
+                <div class="card-body">
+                    <form ng-submit="createRequest()">
+                        <div class="mb-3">
+                            <label class="form-label">Title *</label>
+                            <input type="text" class="form-control" ng-model="newRequest.title"
+                                placeholder="What do you need help with?" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description *</label>
+                            <textarea class="form-control" rows="3" ng-model="newRequest.description"
+                                placeholder="Explain in detail..." required></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Subject *</label>
+                                <select class="form-select" ng-model="newRequest.subject" required>
+                                    <option value="">Select subject</option>
+                                    <option value="AWP">AWP</option>
+                                    <option value="DBMS">DBMS</option>
+                                    <option value="OS">OS</option>
+                                    <option value="CN">CN</option>
+                                    <option value="DSA">DSA</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">For whom? *</label>
+                                <select class="form-select" ng-model="newRequest.audience" required>
+                                    <option value="General">🌍 All Departments</option>
+                                    <option value="CE">💻 CE only</option>
+                                    <option value="IT">🖥️ IT only</option>
+                                    <option value="EC">📡 EC only</option>
+                                    <option value="ME">⚙️ ME only</option>
+                                    <option value="CL">🏗️ Civil only</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Tags (comma separated)</label>
+                                <input type="text" class="form-control" ng-model="newRequest.tags"
+                                    placeholder="DSA, arrays, sorting">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success">Post Request</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ── SEARCH + FILTERS ─────────────────────────────────────────────── -->
+            <div class="card mb-3">
+                <div class="card-body py-2">
+                    <!-- Search bar -->
+                    <div class="mb-2">
+                        <input type="text" class="form-control search-bar" ng-model="searchQuery" ng-change="doSearch()"
+                            placeholder="🔍 Search questions by title, keywords, tags...">
+                    </div>
+                    <!-- Filters -->
+                    <div class="d-flex gap-2 flex-wrap">
+                        <select class="form-select form-select-sm" style="width:auto" ng-model="filterSubject"
+                            ng-change="loadRequests()">
+                            <option value="">All Subjects</option>
+                            <option value="AWP">AWP</option>
+                            <option value="DBMS">DBMS</option>
+                            <option value="OS">OS</option>
+                            <option value="CN">CN</option>
+                            <option value="DSA">DSA</option>
+                        </select>
+                        <small class="text-muted align-self-center">
+                            Showing results for branch: <strong>{{currentUser.branch || 'All'}}</strong>
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── REQUEST CARDS ────────────────────────────────────────────────── -->
+            <div class="text-center py-5 text-muted" ng-show="requests.length === 0">
+                <h5>No requests found 💡</h5>
+                <p>Try different search terms or be the first to ask!</p>
+            </div>
+
+            <div class="card mb-3" ng-repeat="request in requests">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div style="flex:1">
+                            <h5 class="mb-1">{{request.title}}</h5>
+                            <div class="mb-2">
+                                <span class="subject-badge me-1">{{request.subject}}</span>
+                                <span class="badge bg-secondary me-1" ng-show="request.audience !== 'General'">
+                                    🏫 {{request.audience}} only
+                                </span>
+                                <!-- Tags -->
+                                <span class="tag-badge" ng-repeat="tag in request.tags"
+                                    ng-click="searchQuery=tag; doSearch()">#{{tag}}</span>
+                            </div>
+                        </div>
+                        <!-- Delete (owner or admin) -->
+                        <button class="btn btn-sm btn-outline-danger ms-2"
+                            ng-show="currentUser.id === request.userId || currentUser.role === 'admin'"
+                            ng-click="deleteRequest(request._id)">🗑️</button>
+                    </div>
+
+                    <p class="text-muted mb-2" style="font-size:0.9rem">{{request.description}}</p>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted">👤 {{request.userName}}</small>
+                            <small class="text-muted ms-2">💬 {{request.answersCount || 0}} answers</small>
+                            <small class="text-muted ms-2">🕐 {{request.createdAt | date:'mediumDate'}}</small>
+                        </div>
+                        <button class="btn btn-sm btn-primary" ng-click="viewRequest(request._id)">
+                            View & Answer →
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── PAGINATION ───────────────────────────────────────────────────── -->
+            <div class="text-center mt-3" ng-show="totalPages > 1">
+                <button class="page-btn" ng-repeat="p in getPages()" ng-class="{active: p === currentPage}"
+                    ng-click="goToPage(p)">{{p}}</button>
+            </div>
+
+        </div><!-- end col-md-8 -->
+
+        <!-- ── RIGHT: LEADERBOARD ───────────────────────────────────────────────── -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">🏆 Leaderboard — Top Helpers</div>
+                <div class="card-body p-0">
+                    <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom"
+                        ng-repeat="u in leaderboard">
+                        <div>
+                            <span class="fw-semibold">
+                                <span ng-show="$index === 0">🥇</span>
+                                <span ng-show="$index === 1">🥈</span>
+                                <span ng-show="$index === 2">🥉</span>
+                                <span ng-show="$index > 2">{{$index + 1}}.</span>
+                                {{u.name}}
+                            </span>
+                            <small class="text-muted d-block">{{u.branch}}</small>
+                        </div>
+                        <span class="badge bg-warning text-dark">{{u.reputation}} pts</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Subject -->
+            <div class="card mt-3" ng-show="stats.popularSubject">
+                <div class="card-header">📊 Most Asked Subject</div>
+                <div class="card-body text-center">
+                    <h3>{{stats.popularSubject}}</h3>
+                    <p class="text-muted mb-0">Top subject this month</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

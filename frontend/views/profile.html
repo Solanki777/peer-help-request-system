@@ -1,0 +1,45 @@
+<div class="container py-4">
+    <button class="btn btn-outline-secondary mb-3" ng-click="goBack()">← Back</button>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body py-4">
+                    <div style="font-size:4rem">👤</div>
+                    <h4 class="mt-2">{{profileData.name}}</h4>
+                    <p class="text-muted">{{profileData.email}}</p>
+                    <span class="badge bg-primary me-1">{{profileData.branch || 'No branch'}}</span>
+                    <span class="badge bg-danger" ng-show="profileData.role === 'admin'">ADMIN</span>
+                    <hr>
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="fw-bold fs-5 text-warning">{{profileData.reputation || 0}}</div>
+                            <small class="text-muted">Points</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fw-bold fs-5 text-primary">{{myQuestions.length}}</div>
+                            <small class="text-muted">Questions</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fw-bold fs-5 text-success">{{myAnswers.length}}</div>
+                            <small class="text-muted">Answers</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">📋 My Questions</div>
+                <div class="card-body">
+                    <div class="text-muted" ng-show="myQuestions.length === 0">No questions posted yet.</div>
+                    <div class="border-bottom py-2" ng-repeat="q in myQuestions">
+                        <a href="#!/request/{{q._id}}" class="fw-semibold text-decoration-none">{{q.title}}</a>
+                        <small class="text-muted d-block">{{q.subject}} • {{q.createdAt | date:'mediumDate'}}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

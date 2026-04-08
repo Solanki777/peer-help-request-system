@@ -1,0 +1,64 @@
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="card">
+      <div class="card-header text-center py-4">
+        <h2>📝 Create Account</h2>
+      </div>
+      <div class="card-body p-4">
+
+        <div class="alert alert-info" ng-show="message">{{message}}</div>
+
+        <form name="regForm" ng-submit="register()" novalidate>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Full Name</label>
+            <input type="text" class="form-control" ng-model="user.name" placeholder="Your full name" required>
+            <!-- Validation message — shows only if field is touched & empty -->
+            <small class="text-danger" ng-show="regForm.name.$touched && regForm.name.$invalid">
+              Name is required
+            </small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Email</label>
+            <input type="email" class="form-control" ng-model="user.email" name="email" placeholder="your@email.com"
+              required>
+            <small class="text-danger" ng-show="regForm.email.$touched && regForm.email.$error.email">
+              Enter a valid email
+            </small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Password</label>
+            <input type="password" class="form-control" ng-model="user.password" placeholder="Min 6 characters"
+              minlength="6" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Branch</label>
+            <!-- ng-model binds to user.branch -->
+            <select class="form-select" ng-model="user.branch">
+              <option value="">Select branch</option>
+              <option value="CE">Computer Engineering</option>
+              <option value="IT">Information Technology</option>
+              <option value="EC">Electronics</option>
+              <option value="ME">Mechanical</option>
+              <option value="CL">Civil</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 py-2" ng-disabled="regForm.$invalid || loading">
+            <span ng-show="!loading">Register ✓</span>
+            <span ng-show="loading">Registering...</span>
+          </button>
+        </form>
+
+        <hr>
+        <div class="text-center">
+          <small>Already have an account? </small>
+          <a href="#!/login" class="fw-semibold">Login</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

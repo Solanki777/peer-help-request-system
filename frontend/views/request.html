@@ -1,0 +1,80 @@
+<div class="container">
+
+    <!-- Back button -->
+    <button class="btn btn-outline-secondary mb-3" ng-click="goBack()">← Back</button>
+
+    <!-- Alert -->
+    <div class="alert alert-success" ng-show="message">{{message}}</div>
+
+    <!-- ── REQUEST DETAIL ─────────────────────────────────────────────────────── -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4 class="mb-0">{{request.title}}</h4>
+        </div>
+        <div class="card-body">
+            <span class="subject-badge mb-2 d-inline-block">{{request.subject}}</span>
+            <p class="mt-2">{{request.description}}</p>
+            <small class="text-muted">
+                👤 Posted by {{request.userName}} on {{request.createdAt | date:'fullDate'}}
+            </small>
+        </div>
+    </div>
+
+    <!-- ── ANSWERS SECTION ────────────────────────────────────────────────────── -->
+    <h5 class="fw-bold mb-3">💬 {{answers.length}} Answer(s)</h5>
+
+    <div class="text-center text-muted" ng-show="answers.length === 0">
+        No answers yet. Be the first to help! 🙋
+    </div>
+
+    <!-- Loop through answers -->
+    <div class="card mb-3" ng-repeat="answer in answers" ng-class="{'best-answer': answer.isBest}">
+        <div class="card-body">
+
+            <!-- Best answer badge -->
+            <div ng-show="answer.isBest" class="mb-2">
+                <span class="badge bg-success">⭐ Best Answer</span>
+            </div>
+
+            <p>{{answer.content}}</p>
+
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">👤 {{answer.userName}}</small>
+
+                <div class="d-flex align-items-center gap-2">
+                    <!-- Vote buttons -->
+                    <button class="vote-btn" ng-click="vote(answer._id, 'up')" title="Upvote">👍</button>
+                    <strong>{{answer.votes}}</strong>
+                    <button class="vote-btn" ng-click="vote(answer._id, 'down')" title="Downvote">👎</button>
+
+                    <!-- Mark best — only request owner can do this -->
+                    <button class="btn btn-sm btn-outline-success"
+                        ng-show="currentUser.id === request.userId && !answer.isBest" ng-click="markBest(answer._id)">
+                        ✓ Mark Best
+                    </button>
+
+                    <!-- DELETE button — only shown to the person who wrote the answer -->
+                    <button class="btn btn-sm btn-outline-danger" ng-show="currentUser.id === answer.userId"
+                        ng-click="deleteAnswer(answer._id)">
+                        🗑️ Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── POST ANSWER FORM ───────────────────────────────────────────────────── -->
+    <div class="card mt-4">
+        <div class="card-header">✍️ Your Answer</div>
+        <div class="card-body">
+            <form ng-submit="postAnswer()">
+                <div class="mb-3">
+                    <textarea class="form-control" rows="4" ng-model="newAnswer.content"
+                        placeholder="Write your answer here... Be clear and helpful!" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Post Answer</button>
+            </form>
+        </div>
+    </div>
+
+</div>
