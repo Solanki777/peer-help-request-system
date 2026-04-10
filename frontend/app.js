@@ -6,11 +6,11 @@ var API = 'http://localhost:3000/api';
 app.config(function($routeProvider, $locationProvider) {
   $locationProvider.hashPrefix('!');
   $routeProvider
-    .when('/login',        { templateUrl: 'views/login.html',     controller: 'AuthCtrl' })
-    .when('/register',     { templateUrl: 'views/register.html',  controller: 'AuthCtrl' })
-    .when('/dashboard',    { templateUrl: 'views/dashboard.html', controller: 'DashboardCtrl' })
-    .when('/request/:id',  { templateUrl: 'views/request.html',   controller: 'RequestCtrl' })
-    .when('/profile',      { templateUrl: 'views/profile.html',   controller: 'ProfileCtrl' })
+    .when('/login',       { templateUrl: 'views/login.html',    controller: 'AuthCtrl' })
+    .when('/register',    { templateUrl: 'views/register.html', controller: 'AuthCtrl' })
+    .when('/dashboard',   { templateUrl: 'views/dashboard.html',controller: 'DashboardCtrl' })
+    .when('/request/:id', { templateUrl: 'views/request.html',  controller: 'RequestCtrl' })
+    .when('/profile',     { templateUrl: 'views/profile.html',  controller: 'ProfileCtrl' })
     .otherwise({ redirectTo: '/login' });
 });
 
@@ -28,7 +28,7 @@ app.service('AuthService', function() {
 
 // ── SOCKET SERVICE ────────────────────────────────────────────────────────────
 app.service('SocketService', function() {
-  this.socket = io(); // Connect to Socket.IO server
+  this.socket = io();
 });
 
 // ── NAV CONTROLLER ────────────────────────────────────────────────────────────
@@ -40,12 +40,13 @@ app.controller('NavCtrl', function($scope, $location, $http, AuthService, Socket
   $scope.notifications     = [];
   $scope.unreadCount       = 0;
 
-  // Apply dark mode on load
-  document.documentElement.classList.toggle('dark-mode-html', $scope.isDarkMode);
+  // Apply dark mode on load — target <body> which is inside Angular's reach
+  if ($scope.isDarkMode) document.body.classList.add('dark-mode');
 
   $scope.toggleDark = function() {
     $scope.isDarkMode = !$scope.isDarkMode;
     localStorage.setItem('darkMode', $scope.isDarkMode);
+    document.body.classList.toggle('dark-mode', $scope.isDarkMode);
   };
 
   $scope.toggleNotifications = function() {
@@ -66,7 +67,6 @@ app.controller('NavCtrl', function($scope, $location, $http, AuthService, Socket
       .then(function() { $scope.unreadCount = 0; $scope.loadNotifications(); });
   };
 
-  // Real-time: listen for notifications via Socket.IO
   var user = AuthService.getUser();
   if (user) {
     SocketService.socket.emit('join', user.id);
@@ -129,62 +129,114 @@ app.controller('DashboardCtrl', function($scope, $http, $location, AuthService, 
   $scope.requests       = [];
   $scope.newRequest     = {};
   $scope.filterSubject  = '';
-  $scope.filterAudience = 'All';
   $scope.searchQuery    = '';
   $scope.message        = '';
   $scope.showForm       = false;
   $scope.currentPage    = 1;
   $scope.totalPages     = 1;
+  $scope.totalCount     = 0;
   $scope.stats          = {};
   $scope.leaderboard    = [];
+  // 'branch' = my branch first (default), 'all' = everything
+  $scope.filterView     = 'branch';
+  // 'newest' | 'most_answered' | 'unanswered'
+  $scope.sortBy         = 'newest';
 
   function authHeaders() {
     return { headers: { Authorization: AuthService.getToken() } };
   }
 
-  // ── LOAD STATS ────────────────────────────────────────────────────────────
   $scope.loadStats = function() {
     $http.get(API + '/stats').then(function(res) { $scope.stats = res.data; });
   };
 
-  // ── LOAD LEADERBOARD ──────────────────────────────────────────────────────
   $scope.loadLeaderboard = function() {
     $http.get(API + '/auth/leaderboard').then(function(res) { $scope.leaderboard = res.data; });
   };
 
-  // ── LOAD REQUESTS (with search + pagination) ─────────────────────────────
   $scope.loadRequests = function() {
     var url = API + '/requests?page=' + $scope.currentPage + '&limit=10';
-    if ($scope.currentUser.branch) url += '&branch=' + $scope.currentUser.branch;
-    if ($scope.filterSubject)      url += '&subject=' + $scope.filterSubject;
-    if ($scope.searchQuery)        url += '&search='  + encodeURIComponent($scope.searchQuery);
+
+    // Branch filter: 'branch' mode sends user's branch so backend prioritises it
+    if ($scope.filterView === 'branch' && $scope.currentUser.branch) {
+      url += '&branch=' + $scope.currentUser.branch;
+    }
+    // 'all' mode sends no branch — backend returns everything
+
+    if ($scope.filterSubject) url += '&subject=' + $scope.filterSubject;
+    if ($scope.searchQuery)   url += '&search='  + encodeURIComponent($scope.searchQuery);
+    if ($scope.sortBy)        url += '&sort='    + $scope.sortBy;
 
     $http.get(url).then(function(res) {
       $scope.requests   = res.data.requests;
       $scope.totalPages = res.data.totalPages;
+      $scope.totalCount = res.data.total;
     }).catch(function(err) { console.error(err); });
   };
 
-  // ── SEARCH (called on input) ──────────────────────────────────────────────
+  $scope.setView = function(view) {
+    $scope.filterView  = view;
+    $scope.currentPage = 1;
+    $scope.loadRequests();
+  };
+
+  $scope.setSort = function(sort) {
+    $scope.sortBy      = sort;
+    $scope.currentPage = 1;
+    $scope.loadRequests();
+  };
+
   $scope.doSearch = function() {
     $scope.currentPage = 1;
     $scope.loadRequests();
   };
 
-  // ── PAGINATION ────────────────────────────────────────────────────────────
   $scope.getPages = function() {
     var pages = [];
     for (var i = 1; i <= $scope.totalPages; i++) pages.push(i);
     return pages;
   };
+
   $scope.goToPage = function(p) {
     $scope.currentPage = p;
     $scope.loadRequests();
   };
 
-  // ── CREATE REQUEST ────────────────────────────────────────────────────────
+  // ── AUDIENCE HELPERS ─────────────────────────────────────────────────────
+  var BRANCHES = ['CE', 'IT', 'EC', 'ME', 'CL'];
+
+  $scope.toggleAllAudience = function() {
+    if ($scope.newRequest.audience_all) {
+      // Uncheck all specific branches
+      BRANCHES.forEach(function(b) { $scope.newRequest['audience_' + b] = false; });
+    }
+  };
+
+  $scope.getAudienceLabel = function(req) {
+    if (!req) return '';
+    if (req.audience_all) return 'All Departments';
+    var selected = BRANCHES.filter(function(b) { return req['audience_' + b]; });
+    return selected.length > 0 ? selected.join(', ') : '';
+  };
+
+  function buildAudience(req) {
+    if (req.audience_all) return 'General';
+    var selected = BRANCHES.filter(function(b) { return req['audience_' + b]; });
+    if (selected.length === 0) return 'General';        // nothing checked = show to all
+    if (selected.length === BRANCHES.length) return 'General'; // all checked = General
+    return selected.join(',');                           // e.g. "CE,IT,ME"
+  }
+
   $scope.createRequest = function() {
-    $http.post(API + '/requests', $scope.newRequest, authHeaders())
+    var payload = {
+      title:       $scope.newRequest.title,
+      description: $scope.newRequest.description,
+      subject:     $scope.newRequest.subject,
+      audience:    buildAudience($scope.newRequest),
+      tags:        $scope.newRequest.tags || ''
+    };
+
+    $http.post(API + '/requests', payload, authHeaders())
       .then(function() {
         $scope.message    = '✅ Request posted!';
         $scope.newRequest = {};
@@ -197,7 +249,6 @@ app.controller('DashboardCtrl', function($scope, $http, $location, AuthService, 
       });
   };
 
-  // ── DELETE REQUEST ────────────────────────────────────────────────────────
   $scope.deleteRequest = function(id) {
     if (!confirm('Delete this request?')) return;
     $http.delete(API + '/requests/' + id, authHeaders())
@@ -206,14 +257,17 @@ app.controller('DashboardCtrl', function($scope, $http, $location, AuthService, 
 
   $scope.viewRequest = function(id) { $location.path('/request/' + id); };
 
-  // ── REAL-TIME: New request from another user ──────────────────────────────
+  // Real-time: New request from another user (skip own posts — already added by loadRequests)
   SocketService.socket.on('newRequest', function(request) {
     $scope.$apply(function() {
-      $scope.requests.unshift(request); // Add to top instantly
+      var isOwn = $scope.currentUser && String(request.userId) === String($scope.currentUser.id);
+      var exists = $scope.requests.some(function(r) { return r._id === request._id; });
+      if (!isOwn && !exists) {
+        $scope.requests.unshift(request);
+      }
     });
   });
 
-  // Load everything on startup
   $scope.loadRequests();
   $scope.loadStats();
   $scope.loadLeaderboard();
@@ -223,15 +277,36 @@ app.controller('DashboardCtrl', function($scope, $http, $location, AuthService, 
 app.controller('RequestCtrl', function($scope, $http, $location, $routeParams, AuthService, SocketService) {
   if (!AuthService.isLoggedIn()) { $location.path('/login'); return; }
 
-  $scope.currentUser = AuthService.getUser();
-  $scope.request     = {};
-  $scope.answers     = [];
-  $scope.newAnswer   = { content: '' };
-  $scope.message     = '';
-  $scope.aiLoading   = false;
-  $scope.aiSuggestion = '';
+  $scope.currentUser  = AuthService.getUser();
+  $scope.request      = {};
+  $scope.answers      = [];
+  $scope.newAnswer    = { content: '' };
+  $scope.message      = '';
 
   var requestId = $routeParams.id;
+
+  // Helper: safely compare MongoDB ObjectId strings vs JWT id strings
+  $scope.isOwner = function(request) {
+    return request && $scope.currentUser &&
+      String(request.userId) === String($scope.currentUser.id);
+  };
+  $scope.isAnswerOwner = function(answer) {
+    return answer && $scope.currentUser &&
+      String(answer.userId) === String($scope.currentUser.id);
+  };
+  $scope.isCommentOwner = function(comment) {
+    return comment && $scope.currentUser &&
+      String(comment.userId) === String($scope.currentUser.id);
+  };
+
+  // Returns 'up', 'down', or null — shows which way current user voted on this answer
+  $scope.getUserVote = function(answer) {
+    if (!answer || !answer.votedBy || !$scope.currentUser) return null;
+    var vote = answer.votedBy.find(function(v) {
+      return String(v.userId) === String($scope.currentUser.id);
+    });
+    return vote ? vote.vote : null;
+  };
 
   function authHeaders() {
     return { headers: { Authorization: AuthService.getToken() } };
@@ -244,15 +319,22 @@ app.controller('RequestCtrl', function($scope, $http, $location, $routeParams, A
 
   $scope.loadAnswers = function() {
     $http.get(API + '/answers/' + requestId)
-      .then(function(res) { $scope.answers = res.data; });
+      .then(function(res) {
+        $scope.answers = res.data;
+        // Pre-load comment counts for all answers so counts show without clicking
+        res.data.forEach(function(answer) {
+          $http.get(API + '/comments/' + answer._id)
+            .then(function(r) { $scope.comments[answer._id] = r.data; });
+        });
+      });
   };
 
   $scope.postAnswer = function() {
-    $http.post(API + '/answers/' + requestId, $scope.newAnswer, authHeaders())
+    // FIX: Only send content — userId/userName come from token on the backend
+    $http.post(API + '/answers/' + requestId, { content: $scope.newAnswer.content }, authHeaders())
       .then(function() {
-        $scope.newAnswer    = { content: '' };
-        $scope.message      = '✅ Answer posted!';
-        $scope.aiSuggestion = '';
+        $scope.newAnswer = { content: '' };
+        $scope.message   = '✅ Answer posted!';
         $scope.loadAnswers();
       })
       .catch(function(err) {
@@ -282,31 +364,77 @@ app.controller('RequestCtrl', function($scope, $http, $location, $routeParams, A
       });
   };
 
-  // ── AI ANSWER SUGGESTION (uses Anthropic API in artifact) ────────────────
-  $scope.getAISuggestion = function() {
-    $scope.aiLoading    = true;
-    $scope.aiSuggestion = '';
+  // ── COMMENTS (YouTube-style per answer) ──────────────────────────────────
+  $scope.comments       = {};   // { answerId: [comment, ...] }
+  $scope.showComments   = {};   // { answerId: true/false }
+  $scope.newComment     = {};   // { answerId: 'text' }
+  $scope.replyTo        = {};   // { answerId: commentId|null }
+  $scope.replyLabel     = {};   // { answerId: '@username' }
 
-    // We call our own backend which proxies to AI
-    $http.post(API + '/answers/ai-suggest', {
-      question: $scope.request.title + ' ' + $scope.request.description
-    }, authHeaders())
-    .then(function(res) {
-      $scope.aiSuggestion = res.data.suggestion;
-      $scope.aiLoading    = false;
-    })
-    .catch(function() {
-      $scope.aiSuggestion = 'AI suggestion unavailable. Try writing your own answer!';
-      $scope.aiLoading    = false;
-    });
+  $scope.toggleComments = function(answerId) {
+    $scope.showComments[answerId] = !$scope.showComments[answerId];
+    if ($scope.showComments[answerId] && !$scope.comments[answerId]) {
+      $scope.loadComments(answerId);
+    }
   };
 
-  // ── REAL-TIME: New answer from another user ───────────────────────────────
+  $scope.loadComments = function(answerId) {
+    $http.get(API + '/comments/' + answerId)
+      .then(function(res) { $scope.comments[answerId] = res.data; });
+  };
+
+  $scope.postComment = function(answerId) {
+    var text = $scope.newComment[answerId];
+    if (!text || !text.trim()) return;
+    var payload = { content: text.trim(), parentId: $scope.replyTo[answerId] || null };
+    $http.post(API + '/comments/' + answerId, payload, authHeaders())
+      .then(function() {
+        $scope.newComment[answerId] = '';
+        $scope.replyTo[answerId]    = null;
+        $scope.replyLabel[answerId] = null;
+        $scope.loadComments(answerId);
+      });
+  };
+
+  $scope.setReply = function(answerId, comment) {
+    $scope.replyTo[answerId]    = comment._id;
+    $scope.replyLabel[answerId] = '@' + comment.userName + ' ';
+    $scope.newComment[answerId] = '@' + comment.userName + ' ';
+  };
+
+  $scope.clearReply = function(answerId) {
+    $scope.replyTo[answerId]    = null;
+    $scope.replyLabel[answerId] = null;
+    $scope.newComment[answerId] = '';
+  };
+
+  $scope.deleteComment = function(answerId, commentId) {
+    if (!confirm('Delete this comment?')) return;
+    $http.delete(API + '/comments/' + commentId, authHeaders())
+      .then(function() { $scope.loadComments(answerId); });
+  };
+
+  // Indent replies visually
+  $scope.isReply = function(comment) { return !!comment.parentId; };
+
+  // Real-time: incoming comment from another user
+  SocketService.socket.on('newComment', function(data) {
+    $scope.$apply(function() {
+      if ($scope.showComments[data.answerId]) {
+        if (!$scope.comments[data.answerId]) $scope.comments[data.answerId] = [];
+        // avoid duplicate if we posted it ourselves
+        var exists = $scope.comments[data.answerId].some(function(c) {
+          return c._id === data.comment._id;
+        });
+        if (!exists) $scope.comments[data.answerId].push(data.comment);
+      }
+    });
+  });
+
+  // Real-time
   SocketService.socket.on('newAnswer', function(data) {
     if (data.requestId === requestId) {
-      $scope.$apply(function() {
-        $scope.answers.push(data.answer);
-      });
+      $scope.$apply(function() { $scope.answers.push(data.answer); });
     }
   });
 
@@ -327,20 +455,59 @@ app.controller('RequestCtrl', function($scope, $http, $location, $routeParams, A
 app.controller('ProfileCtrl', function($scope, $http, $location, AuthService) {
   if (!AuthService.isLoggedIn()) { $location.path('/login'); return; }
 
-  $scope.currentUser    = AuthService.getUser();
-  $scope.profileData    = {};
-  $scope.myQuestions    = [];
-  $scope.myAnswers      = [];
+  $scope.currentUser = AuthService.getUser();
+  $scope.profileData = {};
+  $scope.myQuestions = [];
+  $scope.myAnswers   = [];
+  $scope.activeTab   = 'questions';
+  $scope.showEdit    = false;
+  $scope.editData    = {};
+  $scope.editMessage = '';
+
+  $scope.setTab = function(tab) { $scope.activeTab = tab; };
+
+  $scope.goToQuestion = function(requestId) {
+    $location.path('/request/' + requestId);
+  };
 
   function authHeaders() {
     return { headers: { Authorization: AuthService.getToken() } };
   }
 
-  $http.get(API + '/auth/profile/' + $scope.currentUser.id)
-    .then(function(res) { $scope.profileData = res.data; });
+  $scope.saveProfile = function() {
+    $scope.editMessage = '';
+    $http.put(API + '/auth/profile/' + $scope.currentUser.id, $scope.editData, authHeaders())
+      .then(function(res) {
+        $scope.editMessage = '✅ Profile updated!';
+        $scope.profileData = res.data.user;
+        $scope.showEdit    = false;
+        // Update stored user so navbar name updates immediately
+        var stored = AuthService.getUser();
+        if ($scope.editData.name)   stored.name   = res.data.user.name;
+        if ($scope.editData.branch) stored.branch = res.data.user.branch;
+        localStorage.setItem('user', JSON.stringify(stored));
+      })
+      .catch(function(err) {
+        $scope.editMessage = '❌ ' + (err.data ? err.data.message : 'Error saving');
+      });
+  };
 
-  $http.get(API + '/requests?userId=' + $scope.currentUser.id)
+  $http.get(API + '/auth/profile/' + $scope.currentUser.id)
+    .then(function(res) {
+      $scope.profileData = res.data;
+      // Pre-fill edit form with current values
+      $scope.editData = {
+        name:   res.data.name,
+        branch: res.data.branch || '',
+        skills: (res.data.skills || []).join(', ')
+      };
+    });
+
+  $http.get(API + '/requests?userId=' + $scope.currentUser.id + '&limit=100')
     .then(function(res) { $scope.myQuestions = res.data.requests || []; });
+
+  $http.get(API + '/auth/my-answers/' + $scope.currentUser.id)
+    .then(function(res) { $scope.myAnswers = res.data || []; });
 
   $scope.goBack = function() { $location.path('/dashboard'); };
 });

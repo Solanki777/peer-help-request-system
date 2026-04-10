@@ -2,15 +2,61 @@
     <button class="btn btn-outline-secondary mb-3" ng-click="goBack()">← Back</button>
 
     <div class="row">
-        <div class="col-md-4">
+        <!-- ── LEFT: USER CARD ──────────────────────────────────────────────── -->
+        <div class="col-md-4 mb-4">
             <div class="card text-center">
                 <div class="card-body py-4">
-                    <div style="font-size:4rem">👤</div>
+                    <div class="profile-avatar mx-auto mb-2">
+                        {{(profileData.name || '?').charAt(0).toUpperCase()}}
+                    </div>
                     <h4 class="mt-2">{{profileData.name}}</h4>
-                    <p class="text-muted">{{profileData.email}}</p>
+                    <p class="text-muted mb-1">{{profileData.email}}</p>
                     <span class="badge bg-primary me-1">{{profileData.branch || 'No branch'}}</span>
                     <span class="badge bg-danger" ng-show="profileData.role === 'admin'">ADMIN</span>
                     <hr>
+                    <!-- Edit profile toggle -->
+                    <button class="btn btn-sm btn-outline-primary mb-3"
+                        ng-click="showEdit = !showEdit">
+                        <span ng-if="!showEdit">✏️ Edit Profile</span>
+                        <span ng-if="showEdit">✕ Cancel</span>
+                    </button>
+
+                    <!-- Edit form -->
+                    <div ng-show="showEdit" class="text-start mb-3">
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Name</label>
+                            <input type="text" class="form-control form-control-sm"
+                                ng-model="editData.name" placeholder="Your name">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Branch</label>
+                            <select class="form-select form-select-sm" ng-model="editData.branch">
+                                <option value="">No branch</option>
+                                <option value="CE">Computer Engineering</option>
+                                <option value="IT">Information Technology</option>
+                                <option value="EC">Electronics</option>
+                                <option value="ME">Mechanical</option>
+                                <option value="CL">Civil</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Skills (comma separated)</label>
+                            <input type="text" class="form-control form-control-sm"
+                                ng-model="editData.skills" placeholder="Python, React, DBMS">
+                        </div>
+                        <div class="alert alert-info p-2 small" ng-show="editMessage">{{editMessage}}</div>
+                        <button class="btn btn-sm btn-success w-100" ng-click="saveProfile()">
+                            Save Changes
+                        </button>
+                    </div>
+
+                    <!-- Skills display -->
+                    <div class="mb-2" ng-show="profileData.skills && profileData.skills.length > 0">
+                        <span class="tag-badge" ng-repeat="s in profileData.skills">{{s}}</span>
+                    </div>
+
+                    <hr>
+                    <!-- Stats row -->
                     <div class="row text-center">
                         <div class="col-4">
                             <div class="fw-bold fs-5 text-warning">{{profileData.reputation || 0}}</div>
@@ -29,16 +75,99 @@
             </div>
         </div>
 
+        <!-- ── RIGHT: TABS ──────────────────────────────────────────────────── -->
         <div class="col-md-8">
             <div class="card">
-                <div class="card-header">📋 My Questions</div>
-                <div class="card-body">
-                    <div class="text-muted" ng-show="myQuestions.length === 0">No questions posted yet.</div>
-                    <div class="border-bottom py-2" ng-repeat="q in myQuestions">
-                        <a href="#!/request/{{q._id}}" class="fw-semibold text-decoration-none">{{q.title}}</a>
-                        <small class="text-muted d-block">{{q.subject}} • {{q.createdAt | date:'mediumDate'}}</small>
+
+                <!-- Tab header -->
+                <div class="card-header p-0">
+                    <ul class="nav nav-tabs card-header-tabs ms-0">
+                        <li class="nav-item">
+                            <button class="nav-link"
+                                ng-class="{active: activeTab === 'questions'}"
+                                ng-click="setTab('questions')">
+                                📋 My Questions
+                                <span class="badge bg-primary ms-1">{{myQuestions.length}}</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link"
+                                ng-class="{active: activeTab === 'answers'}"
+                                ng-click="setTab('answers')">
+                                💬 My Answers
+                                <span class="badge bg-success ms-1">{{myAnswers.length}}</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- ── MY QUESTIONS TAB ──────────────────────────────────────── -->
+                <div class="card-body p-0" ng-show="activeTab === 'questions'">
+                    <div class="text-center text-muted py-4" ng-show="myQuestions.length === 0">
+                        You haven't posted any questions yet.
+                    </div>
+                    <div class="profile-list-item"
+                         ng-repeat="q in myQuestions"
+                         ng-click="goToQuestion(q._id)"
+                         title="Click to view question">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div style="flex:1">
+                                <div class="fw-semibold profile-item-title">{{q.title}}</div>
+                                <div class="mt-1">
+                                    <span class="subject-badge me-1">{{q.subject}}</span>
+                                    <small class="text-muted">{{q.createdAt | date:'mediumDate'}}</small>
+                                </div>
+                            </div>
+                            <div class="text-end ms-3 flex-shrink-0">
+                                <span class="badge bg-light text-dark border">
+                                    💬 {{q.answersCount || 0}} answers
+                                </span>
+                                <div class="mt-1">
+                                    <span class="badge bg-success" ng-show="q.answersCount > 0">Answered</span>
+                                    <span class="badge bg-warning text-dark" ng-show="!q.answersCount">Open</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- ── MY ANSWERS TAB ────────────────────────────────────────── -->
+                <div class="card-body p-0" ng-show="activeTab === 'answers'">
+                    <div class="text-center text-muted py-4" ng-show="myAnswers.length === 0">
+                        You haven't answered any questions yet.
+                    </div>
+                    <div class="profile-list-item"
+                         ng-repeat="a in myAnswers"
+                         ng-click="goToQuestion(a.requestId)"
+                         title="Click to view the question">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div style="flex:1">
+                                <!-- The question this answer belongs to -->
+                                <div class="text-muted small mb-1">
+                                    Question:
+                                </div>
+                                <div class="fw-semibold profile-item-title">{{a.requestTitle}}</div>
+                                <div class="mt-1">
+                                    <span class="subject-badge me-1">{{a.requestSubject}}</span>
+                                    <small class="text-muted">Answered on {{a.createdAt | date:'mediumDate'}}</small>
+                                </div>
+                                <!-- Answer preview -->
+                                <p class="text-muted small mt-2 mb-0 answer-preview">
+                                    {{a.content}}
+                                </p>
+                            </div>
+                            <div class="text-end ms-3 flex-shrink-0">
+                                <span class="badge bg-warning text-dark">
+                                    👍 {{a.votes}} votes
+                                </span>
+                                <div class="mt-1">
+                                    <span class="badge bg-success" ng-show="a.isBest">⭐ Best Answer</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>

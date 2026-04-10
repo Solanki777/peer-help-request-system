@@ -1,76 +1,83 @@
-const express       = require('express');
-const mongoose      = require('mongoose');
-const cors          = require('cors');
-const bodyParser    = require('body-parser');
-const http          = require('http');           // Needed for Socket.IO
-const { Server }    = require('socket.io');      // Real-time WebSockets
-const rateLimit     = require('express-rate-limit');
-const mongoSanitize = require('express-mongo-sanitize');
-const helmet        = require('helmet');
+const express    = require('express');
+const mongoose   = require('mongoose');
+const cors       = require('cors');
+const bodyParser = require('body-parser');
+const http       = require('http');
+const { Server } = require('socket.io');
+const rateLimit  = require('express-rate-limit');
+const helmet     = require('helmet');
+
+// ── INLINE NOSQL SANITIZER ────────────────────────────────────────────────────
+// Replaces express-mongo-sanitize which has a version conflict with Express 5.
+// Strips any keys starting with '$' or containing '.' from req.body to prevent
+// NoSQL injection attacks (e.g. { "$gt": "" } login bypass).
+function sanitize(obj) {
+  if (obj && typeof obj === 'object') {
+    Object.keys(obj).forEach(key => {
+      if (key.startsWith('$') || key.includes('.')) {
+        delete obj[key];
+      } else {
+        sanitize(obj[key]);
+      }
+    });
+  }
+}
+function mongoSanitize(req, res, next) {
+  sanitize(req.body);
+  sanitize(req.params);
+  next();
+}
 
 const app    = express();
-const server = http.createServer(app);           // Wrap express in http server
+const server = http.createServer(app);
 
-// ── SOCKET.IO SETUP ──────────────────────────────────────────────────────────
-const io = new Server(server, {
-  cors: { origin: '*' }
-});
-
-// Make io available in all route files
+const io = new Server(server, { cors: { origin: '*' } });
 app.set('io', io);
 
-// ── SECURITY MIDDLEWARE ──────────────────────────────────────────────────────
-app.use(helmet({ contentSecurityPolicy: false })); // Security headers
-app.use(mongoSanitize());                          // Prevent NoSQL injection
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use(bodyParser.json());
+app.use(mongoSanitize);         // runs AFTER body is parsed — strips $keys and .keys
 app.use(express.static('../frontend'));
 
-// ── RATE LIMITING (prevent spam) ─────────────────────────────────────────────
-// Max 100 requests per 15 minutes per IP
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
+  windowMs: 1 * 60 * 1000,  // 1 minute window
+  max: 500,                  // 500 requests per minute — generous for a college project
   message: { message: 'Too many requests, please try again later.' }
 });
 app.use('/api/', limiter);
 
-// Stricter limit for login/register (5 attempts per 15 min)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
   message: { message: 'Too many login attempts, try again in 15 minutes.' }
 });
-app.use('/api/auth/', authLimiter);
+// Only apply strict limiter to login & register — NOT leaderboard/profile
+app.use('/api/auth/login',    authLimiter);
+app.use('/api/auth/register', authLimiter);
 
-// ── MONGODB CONNECTION ────────────────────────────────────────────────────────
 mongoose.connect('mongodb://localhost:27017/peerhelp')
   .then(() => console.log('✅ MongoDB Connected!'))
   .catch(err => console.log('❌ MongoDB Error:', err));
 
-// ── ROUTES ────────────────────────────────────────────────────────────────────
-app.use('/api/auth',         require('./routes/auth'));
-app.use('/api/requests',     require('./routes/requests'));
-app.use('/api/answers',      require('./routes/answers'));
-app.use('/api/notifications',require('./routes/notifications'));
-app.use('/api/stats',        require('./routes/stats'));
+app.use('/api/auth',          require('./routes/auth'));
+app.use('/api/requests',      require('./routes/requests'));
+app.use('/api/answers',       require('./routes/answers'));
+app.use('/api/comments',      require('./routes/comments'));
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/stats',         require('./routes/stats'));
 
-// ── SOCKET.IO EVENTS ─────────────────────────────────────────────────────────
 io.on('connection', (socket) => {
   console.log('🔌 User connected:', socket.id);
-
-  // User joins their personal room (for private notifications)
   socket.on('join', (userId) => {
     socket.join(userId);
     console.log('👤 User joined room:', userId);
   });
-
   socket.on('disconnect', () => {
     console.log('❌ User disconnected:', socket.id);
   });
 });
 
-// ── START SERVER ──────────────────────────────────────────────────────────────
 server.listen(3000, () => {
   console.log('🚀 Server running on http://localhost:3000');
 });

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html ng-app="peerHelpApp" ng-class="{'dark-mode': isDarkMode}">
+<html ng-app="peerHelpApp">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,9 +8,9 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.3/angular.min.js"></script>
   <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.3/angular-route.min.js"></script>
-  <!-- Socket.IO client -->
   <script src="/socket.io/socket.io.js"></script>
 </head>
+<!-- FIX: dark-mode class is toggled on <body> by JS — ng-class on <html> is outside Angular scope -->
 <body>
 
   <!-- NAVBAR -->
@@ -45,15 +45,12 @@
 
         <!-- 🌙 DARK MODE TOGGLE -->
         <button class="btn btn-sm btn-outline-light" ng-click="toggleDark()">
-          <span ng-show="!isDarkMode">🌙</span>
-          <span ng-show="isDarkMode">☀️</span>
+          <span ng-show="!isDarkMode">🌙 Dark</span>
+          <span ng-show="isDarkMode">☀️ Light</span>
         </button>
 
         <span class="text-white">👋 {{getUser().name}}</span>
-
-        <!-- Admin badge -->
         <span class="badge bg-danger" ng-show="getUser().role === 'admin'">ADMIN</span>
-
         <a href="#!/profile" class="btn btn-sm btn-outline-light">👤 Profile</a>
         <button class="btn btn-sm btn-outline-light" ng-click="logout()">Logout</button>
       </div>
