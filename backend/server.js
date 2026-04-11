@@ -1,11 +1,11 @@
-const express    = require('express');
-const mongoose   = require('mongoose');
-const cors       = require('cors');
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
 const bodyParser = require('body-parser');
-const http       = require('http');
+const http = require('http');
 const { Server } = require('socket.io');
-const rateLimit  = require('express-rate-limit');
-const helmet     = require('helmet');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 
 // ── INLINE NOSQL SANITIZER ────────────────────────────────────────────────────
 // Replaces express-mongo-sanitize which has a version conflict with Express 5.
@@ -28,7 +28,7 @@ function mongoSanitize(req, res, next) {
   next();
 }
 
-const app    = express();
+const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, { cors: { origin: '*' } });
@@ -53,19 +53,21 @@ const authLimiter = rateLimit({
   message: { message: 'Too many login attempts, try again in 15 minutes.' }
 });
 // Only apply strict limiter to login & register — NOT leaderboard/profile
-app.use('/api/auth/login',    authLimiter);
+app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
 mongoose.connect('mongodb://localhost:27017/peerhelp')
   .then(() => console.log('✅ MongoDB Connected!'))
   .catch(err => console.log('❌ MongoDB Error:', err));
 
-app.use('/api/auth',          require('./routes/auth'));
-app.use('/api/requests',      require('./routes/requests'));
-app.use('/api/answers',       require('./routes/answers'));
-app.use('/api/comments',      require('./routes/comments'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/requests', require('./routes/requests'));
+app.use('/api/answers', require('./routes/answers'));
+app.use('/api/comments', require('./routes/comments'));
+app.use('/api/suggestions', require('./routes/suggestions'));
+app.use('/api/admin', require('./routes/admin'));
 app.use('/api/notifications', require('./routes/notifications'));
-app.use('/api/stats',         require('./routes/stats'));
+app.use('/api/stats', require('./routes/stats'));
 
 io.on('connection', (socket) => {
   console.log('🔌 User connected:', socket.id);

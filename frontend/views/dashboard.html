@@ -1,70 +1,71 @@
-<div class="container-fluid px-4 py-3">
+<div class="container-fluid px-3 px-md-4 py-3">
 
     <!-- ── STATS ROW ─────────────────────────────────────────────────────────── -->
-    <div class="row mb-4">
+    <div class="row g-3 mb-4">
         <div class="col-6 col-md-3">
             <div class="stat-card blue">
                 <div class="stat-number">{{stats.totalQuestions || 0}}</div>
-                <div class="stat-label">Total Questions</div>
+                <div class="stat-label">📋 Total Questions</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="stat-card green">
                 <div class="stat-number">{{stats.answeredQuestions || 0}}</div>
-                <div class="stat-label">Answered Questions</div>
+                <div class="stat-label">✅ Answered</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="stat-card orange">
-                <div class="stat-number">{{stats.popularSubject || 'N/A'}}</div>
-                <div class="stat-label">Top Subject</div>
+                <div class="stat-number" style="font-size:1.3rem">{{stats.popularSubject || 'N/A'}}</div>
+                <div class="stat-label">🔥 Top Subject</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="stat-card purple">
                 <div class="stat-number">{{stats.totalUsers || 0}}</div>
-                <div class="stat-label">Students</div>
+                <div class="stat-label">👥 Students</div>
             </div>
         </div>
     </div>
 
-    <div class="row">
+    <div class="row g-3">
         <!-- ── LEFT: MAIN CONTENT ──────────────────────────────────────────────── -->
-        <div class="col-md-8">
+        <div class="col-lg-8">
 
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="fw-bold mb-0">📋 Help Requests</h4>
-                <!-- FIX: Button always visible -->
-                <button class="btn btn-primary" ng-click="showForm = !showForm">
-                    <span ng-if="!showForm">+ New Request</span>
+                <h5 class="fw-bold mb-0">📋 Help Requests</h5>
+                <button class="btn btn-primary btn-sm px-3" ng-click="showForm = !showForm">
+                    <span ng-if="!showForm">＋ New Request</span>
                     <span ng-if="showForm">✕ Cancel</span>
                 </button>
             </div>
 
-            <!-- Success/error message -->
-            <div class="alert alert-info alert-dismissible" ng-show="message">
+            <!-- Alert -->
+            <div class="alert alert-info alert-dismissible py-2 mb-3" ng-show="message"
+                style="border-radius:10px;font-size:0.875rem">
                 {{message}}
-                <button class="btn-close" ng-click="message=''"></button>
+                <button class="btn-close btn-close-sm" ng-click="message=''"></button>
             </div>
 
             <!-- ── CREATE FORM ──────────────────────────────────────────────────── -->
-            <div class="card mb-3" ng-show="showForm">
-                <div class="card-header">📝 Post a Help Request</div>
+            <div class="card mb-3" ng-show="showForm" style="border-color:#c7d2fe">
+                <div class="card-header" style="background:#eef2ff;color:#4f46e5">📝 Post a Help Request</div>
                 <div class="card-body">
                     <form ng-submit="createRequest()">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Title *</label>
+                            <label class="form-label fw-semibold small">Title *</label>
                             <input type="text" class="form-control" ng-model="newRequest.title"
                                 placeholder="What do you need help with?" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Description *</label>
+                            <label class="form-label fw-semibold small">Description *</label>
                             <textarea class="form-control" rows="3" ng-model="newRequest.description"
-                                placeholder="Explain in detail..." required></textarea>
+                                placeholder="Explain in detail — the more context, the better help you'll get..."
+                                required></textarea>
                         </div>
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-semibold">Subject *</label>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold small">Subject *</label>
                                 <select class="form-select" ng-model="newRequest.subject" required>
                                     <option value="">Select subject</option>
                                     <option value="AWP">AWP</option>
@@ -75,60 +76,37 @@
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-semibold">For whom? <small class="text-muted">(select one or more)</small></label>
-                                <div class="audience-checkboxes">
-                                    <div class="form-check">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold small">For whom?</label>
+                                <div class="border rounded p-2" style="border-radius:8px!important;font-size:0.85rem">
+                                    <div class="form-check mb-1">
                                         <input class="form-check-input" type="checkbox" id="aud_all"
-                                            ng-model="newRequest.audience_all"
-                                            ng-change="toggleAllAudience()">
-                                        <label class="form-check-label" for="aud_all">🌍 All Departments</label>
+                                            ng-model="newRequest.audience_all" ng-change="toggleAllAudience()">
+                                        <label class="form-check-label fw-semibold" for="aud_all">🌍 All
+                                            Departments</label>
                                     </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="aud_ce"
-                                            ng-model="newRequest.audience_CE"
+                                    <div class="form-check mb-1"
+                                        ng-repeat="b in [{id:'CE',icon:'💻'},{id:'IT',icon:'🖥️'},{id:'EC',icon:'📡'},{id:'ME',icon:'⚙️'},{id:'CL',icon:'🏗️'}]">
+                                        <input class="form-check-input" type="checkbox" id="aud_{{b.id}}"
+                                            ng-model="newRequest['audience_' + b.id]"
                                             ng-disabled="newRequest.audience_all">
-                                        <label class="form-check-label" for="aud_ce">💻 CE</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="aud_it"
-                                            ng-model="newRequest.audience_IT"
-                                            ng-disabled="newRequest.audience_all">
-                                        <label class="form-check-label" for="aud_it">🖥️ IT</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="aud_ec"
-                                            ng-model="newRequest.audience_EC"
-                                            ng-disabled="newRequest.audience_all">
-                                        <label class="form-check-label" for="aud_ec">📡 EC</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="aud_me"
-                                            ng-model="newRequest.audience_ME"
-                                            ng-disabled="newRequest.audience_all">
-                                        <label class="form-check-label" for="aud_me">⚙️ ME</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="aud_cl"
-                                            ng-model="newRequest.audience_CL"
-                                            ng-disabled="newRequest.audience_all">
-                                        <label class="form-check-label" for="aud_cl">🏗️ Civil</label>
+                                        <label class="form-check-label" for="aud_{{b.id}}">{{b.icon}} {{b.id}}</label>
                                     </div>
                                 </div>
                                 <small class="text-muted mt-1 d-block" ng-show="getAudienceLabel(newRequest)">
-                                    For: <strong>{{getAudienceLabel(newRequest)}}</strong>
+                                    For: <strong class="text-primary">{{getAudienceLabel(newRequest)}}</strong>
                                 </small>
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-semibold">Tags (comma separated)</label>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold small">Tags</label>
                                 <input type="text" class="form-control" ng-model="newRequest.tags"
                                     placeholder="DSA, arrays, sorting">
+                                <small class="text-muted">Comma separated</small>
                             </div>
                         </div>
-                        <!-- FIX: Button always visible, disabled only when form incomplete -->
-                        <button type="submit" class="btn btn-success"
+                        <button type="submit" class="btn btn-success mt-3"
                             ng-disabled="!newRequest.title || !newRequest.description || !newRequest.subject">
-                            Post Request
+                            🚀 Post Request
                         </button>
                     </form>
                 </div>
@@ -136,33 +114,25 @@
 
             <!-- ── SEARCH + FILTERS ─────────────────────────────────────────────── -->
             <div class="card mb-3">
-                <div class="card-body py-2">
-
-                    <!-- Search bar -->
+                <div class="card-body py-3">
                     <div class="mb-3">
-                        <input type="text" class="form-control search-bar" ng-model="searchQuery"
-                            ng-change="doSearch()"
-                            placeholder="🔍 Search questions by title, keywords, tags...">
+                        <input type="text" class="form-control search-bar" ng-model="searchQuery" ng-change="doSearch()"
+                            placeholder="🔍 Search by title, keywords, tags...">
                     </div>
 
-                    <!-- View tabs: My Branch / All Questions -->
                     <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
                         <div class="filter-tab-group">
-                            <button class="filter-tab"
-                                ng-class="{active: filterView === 'branch'}"
-                                ng-click="setView('branch')"
-                                ng-show="currentUser.branch">
+                            <button class="filter-tab" ng-class="{active: filterView === 'branch'}"
+                                ng-click="setView('branch')" ng-show="currentUser.branch">
                                 🏫 My Branch ({{currentUser.branch}})
                             </button>
-                            <button class="filter-tab"
-                                ng-class="{active: filterView === 'all' || !currentUser.branch}"
+                            <button class="filter-tab" ng-class="{active: filterView === 'all' || !currentUser.branch}"
                                 ng-click="setView('all')">
                                 🌍 All Questions
                             </button>
                         </div>
 
-                        <!-- Subject filter -->
-                        <select class="form-select form-select-sm ms-auto" style="width:auto"
+                        <select class="form-select form-select-sm ms-auto" style="width:auto;min-width:130px"
                             ng-model="filterSubject" ng-change="loadRequests()">
                             <option value="">All Subjects</option>
                             <option value="AWP">AWP</option>
@@ -174,60 +144,72 @@
                         </select>
                     </div>
 
-                    <!-- Sort buttons -->
                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <small class="text-muted me-1">Sort:</small>
+                        <small class="text-muted">Sort:</small>
                         <button class="sort-btn" ng-class="{active: sortBy === 'newest'}"
                             ng-click="setSort('newest')">🕐 Newest</button>
                         <button class="sort-btn" ng-class="{active: sortBy === 'most_answered'}"
                             ng-click="setSort('most_answered')">💬 Most Answered</button>
                         <button class="sort-btn" ng-class="{active: sortBy === 'unanswered'}"
                             ng-click="setSort('unanswered')">❓ Unanswered</button>
-                        <small class="text-muted ms-auto">{{totalCount}} question(s)</small>
+                        <span class="ms-auto badge"
+                            style="background:#eef2ff;color:#4f46e5;font-size:0.78rem">{{totalCount}} result(s)</span>
                     </div>
                 </div>
             </div>
 
             <!-- ── NO RESULTS ──────────────────────────────────────────────────── -->
             <div class="text-center py-5 text-muted" ng-show="requests.length === 0">
-                <h5>No requests found 💡</h5>
-                <p>Try different search terms or be the first to ask!</p>
+                <div style="font-size:3rem;margin-bottom:12px">🔍</div>
+                <h6 class="fw-bold">No requests found</h6>
+                <p class="small">Try different search terms or be the first to ask!</p>
             </div>
 
             <!-- ── REQUEST CARDS ────────────────────────────────────────────────── -->
-            <div class="card mb-3" ng-repeat="request in requests">
+            <div class="card request-card mb-3" ng-repeat="request in requests">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div style="flex:1">
-                            <h5 class="mb-1">{{request.title}}</h5>
-                            <div class="mb-2">
-                                <span class="subject-badge me-1">{{request.subject}}</span>
-                                <span class="badge bg-secondary me-1"
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div style="flex:1;min-width:0" ng-click="viewRequest(request._id)"
+                            style="cursor:pointer;flex:1">
+                            <h6 class="fw-bold mb-2" style="line-height:1.4;cursor:pointer"
+                                ng-click="viewRequest(request._id)">
+                                {{request.title}}
+                            </h6>
+                            <div class="mb-2 d-flex flex-wrap gap-1 align-items-center">
+                                <span class="subject-badge">{{request.subject}}</span>
+                                <span class="badge bg-secondary" style="font-size:0.7rem"
                                     ng-show="request.audience && request.audience !== 'General'">
                                     🏫 {{request.audience}}
                                 </span>
                                 <span class="tag-badge" ng-repeat="tag in request.tags"
-                                    ng-click="searchQuery=tag; doSearch()">#{{tag}}</span>
+                                    ng-click="$event.stopPropagation(); searchQuery=tag; doSearch()">#{{tag}}</span>
                             </div>
                         </div>
-                        <!-- FIX: Delete button always visible (not hidden until hover) -->
-                        <button class="btn btn-sm btn-outline-danger ms-2"
+                        <button class="btn btn-sm btn-outline-danger flex-shrink-0"
+                            style="padding:4px 10px;font-size:0.78rem"
                             ng-if="currentUser.id === request.userId || currentUser.role === 'admin'"
                             ng-click="deleteRequest(request._id)">
                             🗑️
                         </button>
                     </div>
 
-                    <p class="text-muted mb-2" style="font-size:0.9rem">{{request.description}}</p>
+                    <p class="text-muted mb-3"
+                        style="font-size:0.875rem;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
+                        {{request.description}}
+                    </p>
 
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div>
-                            <small class="text-muted">👤 {{request.userName}}</small>
-                            <small class="text-muted ms-2">💬 {{request.answersCount || 0}} answers</small>
-                            <small class="text-muted ms-2">🕐 {{request.createdAt | date:'mediumDate'}}</small>
+                        <div class="d-flex gap-3 align-items-center">
+                            <small class="text-muted">👤 <strong>{{request.userName}}</strong></small>
+                            <span class="badge"
+                                ng-class="request.answersCount > 0 ? 'bg-success' : 'bg-light text-dark border'"
+                                style="font-size:0.72rem">
+                                💬 {{request.answersCount || 0}} {{request.answersCount === 1 ? 'answer' : 'answers'}}
+                            </span>
+                            <small class="text-muted">{{request.createdAt | date:'mediumDate'}}</small>
                         </div>
-                        <!-- FIX: Button always visible -->
-                        <button class="btn btn-sm btn-primary" ng-click="viewRequest(request._id)">
+                        <button class="btn btn-sm btn-primary" ng-click="viewRequest(request._id)"
+                            style="font-size:0.8rem">
                             View & Answer →
                         </button>
                     </div>
@@ -236,45 +218,58 @@
 
             <!-- ── PAGINATION ───────────────────────────────────────────────────── -->
             <div class="text-center mt-3" ng-show="totalPages > 1">
-                <button class="page-btn" ng-repeat="p in getPages()"
-                    ng-class="{active: p === currentPage}"
+                <button class="page-btn" ng-repeat="p in getPages()" ng-class="{active: p === currentPage}"
                     ng-click="goToPage(p)">{{p}}</button>
             </div>
 
-        </div><!-- end col-md-8 -->
+        </div><!-- end col-lg-8 -->
 
-        <!-- ── RIGHT: LEADERBOARD ───────────────────────────────────────────────── -->
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">🏆 Leaderboard — Top Helpers</div>
+        <!-- ── RIGHT SIDEBAR ─────────────────────────────────────────────────────── -->
+        <div class="col-lg-4">
+
+            <!-- Leaderboard -->
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>🏆 Top Helpers</span>
+                    <small class="text-muted">This month</small>
+                </div>
                 <div class="card-body p-0">
-                    <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom"
-                        ng-repeat="u in leaderboard">
-                        <div>
-                            <span class="fw-semibold">
+                    <div class="d-flex justify-content-between align-items-center px-3 py-2"
+                        style="border-bottom:1px solid var(--border,#e2e8f0)" ng-repeat="u in leaderboard">
+                        <div class="d-flex align-items-center gap-2">
+                            <span style="font-size:1.1rem">
                                 <span ng-if="$index === 0">🥇</span>
                                 <span ng-if="$index === 1">🥈</span>
                                 <span ng-if="$index === 2">🥉</span>
-                                <span ng-if="$index > 2">{{$index + 1}}.</span>
-                                {{u.name}}
+                                <span ng-if="$index > 2" class="text-muted fw-bold" style="font-size:0.85rem">{{$index +
+                                    1}}.</span>
                             </span>
-                            <small class="text-muted d-block">{{u.branch}}</small>
+                            <div>
+                                <div class="fw-semibold" style="font-size:0.875rem">{{u.name}}</div>
+                                <small class="text-muted" style="font-size:0.75rem">{{u.branch || 'No branch'}}</small>
+                            </div>
                         </div>
-                        <span class="badge bg-warning text-dark">{{u.reputation}} pts</span>
+                        <span class="badge" style="background:#fef3c7;color:#92400e;font-size:0.75rem">{{u.reputation}}
+                            pts</span>
                     </div>
-                    <div class="text-center py-3 text-muted" ng-show="leaderboard.length === 0">
+                    <div class="text-center py-4 text-muted small" ng-show="leaderboard.length === 0">
                         No data yet
                     </div>
                 </div>
             </div>
 
-            <div class="card mt-3" ng-show="stats.popularSubject && stats.popularSubject !== 'N/A'">
+            <!-- Most Asked Subject -->
+            <div class="card" ng-show="stats.popularSubject && stats.popularSubject !== 'N/A'">
                 <div class="card-header">📊 Most Asked Subject</div>
-                <div class="card-body text-center">
-                    <h3>{{stats.popularSubject}}</h3>
-                    <p class="text-muted mb-0">Top subject this month</p>
+                <div class="card-body text-center py-4">
+                    <div
+                        style="font-size:2.5rem;font-weight:800;background:linear-gradient(135deg,#4f46e5,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent">
+                        {{stats.popularSubject}}
+                    </div>
+                    <p class="text-muted small mb-0 mt-1">Most popular topic this month</p>
                 </div>
             </div>
+
         </div>
 
     </div>

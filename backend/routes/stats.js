@@ -1,12 +1,12 @@
 const express = require('express');
-const router  = express.Router();
+const router = express.Router();
 
 const { Request, Answer, User } = require('../models');
 
 router.get('/', async (req, res) => {
   try {
     const totalQuestions = await Request.countDocuments();
-    const totalUsers     = await User.countDocuments();
+    const totalUsers = await User.countDocuments();
 
     // "Answered Questions" = questions that have at least 1 answer
     const answeredQuestions = await Request.countDocuments({ answersCount: { $gt: 0 } });

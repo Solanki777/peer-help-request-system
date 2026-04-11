@@ -1,6 +1,6 @@
 const express = require('express');
-const router  = express.Router();
-const jwt     = require('jsonwebtoken');
+const router = express.Router();
+const jwt = require('jsonwebtoken');
 
 const { Comment, Answer, Notification } = require('../models');
 
@@ -31,9 +31,9 @@ router.post('/:answerId', authMiddleware, async (req, res) => {
 
     const comment = new Comment({
       answerId: req.params.answerId,
-      userId:   req.user.id,
+      userId: req.user.id,
       userName: req.user.name,
-      content:  content.trim(),
+      content: content.trim(),
       parentId: parentId || null
     });
     await comment.save();
@@ -42,10 +42,10 @@ router.post('/:answerId', authMiddleware, async (req, res) => {
     const answer = await Answer.findById(req.params.answerId);
     if (answer && answer.userId.toString() !== req.user.id) {
       const notif = new Notification({
-        userId:  answer.userId,
-        type:    'comment',
+        userId: answer.userId,
+        type: 'comment',
         message: `${req.user.name} commented on your answer`,
-        link:    `/#!/request/${answer.requestId}`
+        link: `/#!/request/${answer.requestId}`
       });
       await notif.save();
       const io = req.app.get('io');

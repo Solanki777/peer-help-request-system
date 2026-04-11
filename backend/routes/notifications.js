@@ -1,6 +1,6 @@
 const express = require('express');
-const router  = express.Router();
-const jwt     = require('jsonwebtoken');
+const router = express.Router();
+const jwt = require('jsonwebtoken');
 
 // FIX: Use central models — no duplicate schema definition here
 const { Notification } = require('../models');

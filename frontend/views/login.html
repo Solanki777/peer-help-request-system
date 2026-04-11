@@ -1,56 +1,45 @@
-<!-- ng-controller is already set in routing, so no need here -->
 <div class="auth-container">
   <div class="auth-card">
     <div class="card">
-      <div class="card-header text-center py-4">
+      <div class="card-header text-center">
         <h2>🎓 PeerHelp GTU</h2>
-        <p class="mb-0 opacity-75">Login to your account</p>
+        <p class="mb-0 small" style="opacity:0.8">Sign in to your account</p>
       </div>
-      <div class="card-body p-4">
+      <div class="card-body">
 
-        <!-- Alert message (shows only when message is not empty) -->
-        <div class="alert alert-info" ng-show="message">{{message}}</div>
+        <div class="alert py-2" ng-show="message"
+          ng-class="{'alert-danger': isError, 'alert-warning': isPending, 'alert-info': !isError && !isPending}"
+          style="font-size:0.875rem;border-radius:8px">
+          {{message}}
+        </div>
 
-        <!--
-          ng-submit="login()" → Call login() when form submitted
-          name="loginForm"    → Give form a name for validation
-          novalidate          → Let AngularJS handle validation
-        -->
         <form name="loginForm" ng-submit="login()" novalidate>
-
           <div class="mb-3">
-            <label class="form-label fw-semibold">📧 Email</label>
-            <!--
-              ng-model="user.email" → TWO-WAY BINDING
-              When user types, $scope.user.email updates automatically!
-            -->
-            <input type="email" class="form-control"
-                   ng-model="user.email"
-                   placeholder="your@email.com"
-                   required>
+            <label class="form-label fw-semibold small">📧 Email</label>
+            <input type="email" class="form-control" ng-model="user.email" placeholder="your@email.com" required
+              autocomplete="email">
           </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-semibold">🔒 Password</label>
-            <input type="password" class="form-control"
-                   ng-model="user.password"
-                   placeholder="Your password"
-                   required>
+          <div class="mb-4">
+            <label class="form-label fw-semibold small">🔒 Password</label>
+            <input type="password" class="form-control" ng-model="user.password" placeholder="Your password" required
+              autocomplete="current-password">
           </div>
 
-          <!-- ng-disabled: button disabled while loading -->
           <button type="submit" class="btn btn-primary w-100 py-2" ng-disabled="loading">
-            <!-- Conditional text using ng-show -->
-            <span ng-show="!loading">Login →</span>
-            <span ng-show="loading">Logging in...</span>
+            <span ng-show="!loading">Sign In →</span>
+            <span ng-show="loading">Signing in...</span>
           </button>
         </form>
 
-        <hr>
+        <hr class="my-4">
         <div class="text-center">
-          <small>Don't have an account? </small>
-          <!-- AngularJS routing link -->
-          <a href="#!/register" class="fw-semibold">Register here</a>
+          <small class="text-muted">Don't have an account? </small>
+          <a href="#!/register" class="fw-semibold text-decoration-none" style="color:#4f46e5">Create one →</a>
+        </div>
+
+        <div class="alert alert-warning mt-3 py-2 small" ng-show="isPending" style="border-radius:8px">
+          ⏳ Your account is awaiting admin approval. You'll be notified once approved.
         </div>
       </div>
     </div>

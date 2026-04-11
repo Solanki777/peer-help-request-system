@@ -1,11 +1,9 @@
-const express  = require('express');
-const router   = express.Router();
-const jwt      = require('jsonwebtoken');
+const express = require('express');
+const router = express.Router();
+const jwt = require('jsonwebtoken');
 
-// FIX: Use central models — no duplicate schema definition here
 const { Request, User, Answer, Comment } = require('../models');
-
-const SECRET = 'SECRET_KEY_GTU_2024';
+const SECRET = process.env.JWT_SECRET || 'SECRET_KEY_GTU_2024';
 
 function authMiddleware(req, res, next) {
   const token = req.headers['authorization'];
@@ -19,21 +17,18 @@ function authMiddleware(req, res, next) {
 // ── GET ALL REQUESTS ──────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
-    const filter = {};
+    const filter = { isHidden: { $ne: true } };
 
     if (req.query.subject) filter.subject = req.query.subject;
 
-    // userId filter for profile page — when filtering by user, skip audience filter
     if (req.query.userId) {
       filter.userId = req.query.userId;
     } else if (req.query.branch) {
-      // Show: General questions + questions that include the user's branch
-      // audience is stored as 'General', 'CE', 'CE,IT', 'CE,IT,ME' etc.
       const branchRegex = new RegExp('(^|,)' + req.query.branch + '(,|$)');
       filter.$or = [
         { audience: 'General' },
-        { audience: req.query.branch },           // exact single match
-        { audience: { $regex: branchRegex } },    // match inside comma list
+        { audience: req.query.branch },
+        { audience: { $regex: branchRegex } },
         { audience: { $exists: false } },
         { audience: '' }
       ];
@@ -41,12 +36,10 @@ router.get('/', async (req, res) => {
 
     if (req.query.tag) filter.tags = req.query.tag;
 
-    // Search — if $or already set from branch, wrap both in $and
     if (req.query.search) {
       const searchRegex = new RegExp(req.query.search, 'i');
       const searchOr = { $or: [{ title: searchRegex }, { description: searchRegex }, { tags: searchRegex }] };
       if (filter.$or) {
-        // Combine branch filter + search filter with $and
         filter.$and = [{ $or: filter.$or }, searchOr];
         delete filter.$or;
       } else {
@@ -54,16 +47,15 @@ router.get('/', async (req, res) => {
       }
     }
 
-    const page  = parseInt(req.query.page)  || 1;
+    const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip  = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
-    // Sort options
-    let sortObj = { createdAt: -1 }; // default: newest
+    let sortObj = { createdAt: -1 };
     if (req.query.sort === 'most_answered') sortObj = { answersCount: -1, createdAt: -1 };
-    if (req.query.sort === 'unanswered')    filter.answersCount = 0;
+    if (req.query.sort === 'unanswered') filter.answersCount = 0;
 
-    const total    = await Request.countDocuments(filter);
+    const total = await Request.countDocuments(filter);
     const requests = await Request.find(filter).sort(sortObj).skip(skip).limit(limit);
 
     res.json({ requests, total, page, totalPages: Math.ceil(total / limit), hasMore: page < Math.ceil(total / limit) });
@@ -87,20 +79,20 @@ router.get('/:id', async (req, res) => {
 router.post('/', authMiddleware, async (req, res) => {
   try {
     const { title, description, subject, audience, tags } = req.body;
+    if (!title || !description || !subject)
+      return res.status(400).json({ message: 'Title, description and subject are required' });
 
     const parsedTags = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
-    // FIX: userId and userName come from the verified JWT token — NOT from req.body.
-    // This was the root cause of questions appearing under the wrong user.
     const request = new Request({
       title,
       description,
       subject,
       audience,
-      tags:     parsedTags,
-      userId:   req.user.id,    // always from token
-      userName: req.user.name,  // always from token
-      branch:   req.user.branch // always from token
+      tags: parsedTags,
+      userId: req.user.id,
+      userName: req.user.name,
+      branch: req.user.branch
     });
     await request.save();
 
@@ -115,7 +107,7 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-// ── DELETE REQUEST ────────────────────────────────────────────────────────────
+// ── DELETE REQUEST — cascade deletes ALL answers + their comments ──────────────
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const request = await Request.findById(req.params.id);
@@ -124,9 +116,12 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     if (request.userId.toString() !== req.user.id && req.user.role !== 'admin')
       return res.status(403).json({ message: 'Not authorized' });
 
-    // Cascade delete: remove all answers and their comments for this request
+    // BUG FIX: Always cascade-delete comments for ALL answers of this question,
+    // regardless of whether answerIds is empty or not.
     const answers = await Answer.find({ requestId: req.params.id }).select('_id');
     const answerIds = answers.map(a => a._id);
+
+    // Delete all comments belonging to any answer of this question
     if (answerIds.length > 0) {
       await Comment.deleteMany({ answerId: { $in: answerIds } });
       await Answer.deleteMany({ requestId: req.params.id });
@@ -139,4 +134,4 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-module.exports = router;ch
+module.exports = router;
