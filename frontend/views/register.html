@@ -1,5 +1,5 @@
 <div class="auth-container">
-  <div class="auth-card">
+  <div class="auth-card" style="max-width:640px">
     <div class="card">
       <div class="card-header text-center">
         <h2>📝 Create Account</h2>
@@ -8,7 +8,7 @@
       <div class="card-body">
 
         <!-- Success state -->
-        <div class="text-center py-3" ng-show="registered">
+        <div class="text-center py-4" ng-show="registered">
           <div style="font-size:3.5rem;margin-bottom:12px">✅</div>
           <h5 class="fw-bold">Registration Submitted!</h5>
           <p class="text-muted small">Your account is pending admin approval.<br>You'll receive a notification once
@@ -21,57 +21,155 @@
           <div class="alert alert-warning py-2 small mb-3" style="border-radius:8px">
             ⚠️ An admin must approve your account before you can log in.
           </div>
-
-          <div class="alert alert-danger py-2 small" ng-show="message && !registered" style="border-radius:8px">
-            {{message}}</div>
+          <div class="alert alert-danger py-2 small" ng-show="message" style="border-radius:8px">{{message}}</div>
 
           <form name="regForm" ng-submit="register()" novalidate>
-            <div class="mb-3">
-              <label class="form-label fw-semibold small">Full Name *</label>
-              <input type="text" class="form-control" ng-model="user.name" name="name" placeholder="Your full name"
-                required autocomplete="name">
-              <small class="text-danger" ng-show="regForm.name.$touched && regForm.name.$invalid">
-                Name is required
-              </small>
+
+            <!-- ── SECTION: Personal Info ─────────────────────── -->
+            <p class="fw-bold text-primary mb-2 mt-1" style="font-size:0.82rem;letter-spacing:.5px">👤 PERSONAL
+              INFORMATION</p>
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">Full Name *</label>
+                <input type="text" class="form-control" ng-model="user.name" name="name" placeholder="e.g. Raj Patel"
+                  required autocomplete="name">
+                <small class="text-danger" ng-show="regForm.name.$touched && regForm.name.$invalid">Name is
+                  required</small>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">Enrollment Number *</label>
+                <input type="text" class="form-control" ng-model="user.enrollment" name="enrollment"
+                  placeholder="e.g. 210010107001" required>
+                <small class="text-danger"
+                  ng-show="regForm.enrollment.$touched && regForm.enrollment.$invalid">Enrollment is required</small>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">Date of Birth *</label>
+                <input type="date" class="form-control" ng-model="user.dob" name="dob" required>
+                <small class="text-danger" ng-show="regForm.dob.$touched && regForm.dob.$invalid">DOB is
+                  required</small>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">Contact Number *</label>
+                <input type="tel" class="form-control" ng-model="user.contact" name="contact"
+                  placeholder="10-digit mobile" pattern="[0-9]{10}" required>
+                <small class="text-danger" ng-show="regForm.contact.$touched && regForm.contact.$error.pattern">Enter a
+                  valid 10-digit number</small>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">City</label>
+                <input type="text" class="form-control" ng-model="user.city" placeholder="e.g. Ahmedabad">
+              </div>
             </div>
 
-            <div class="mb-3">
-              <label class="form-label fw-semibold small">Email *</label>
-              <input type="email" class="form-control" ng-model="user.email" name="email" placeholder="your@email.com"
-                required autocomplete="email">
-              <small class="text-danger" ng-show="regForm.email.$touched && regForm.email.$error.email">
-                Enter a valid email
-              </small>
+            <!-- ── SECTION: Account ──────────────────────────── -->
+            <p class="fw-bold text-primary mb-2 mt-1" style="font-size:0.82rem;letter-spacing:.5px">📧 ACCOUNT DETAILS
+            </p>
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">Email *</label>
+                <input type="email" class="form-control" ng-model="user.email" name="email" placeholder="your@email.com"
+                  required autocomplete="email">
+                <small class="text-danger" ng-show="regForm.email.$touched && regForm.email.$error.email">Enter a valid
+                  email</small>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">Password *</label>
+                <div class="input-group">
+                  <input type="{{showPw ? 'text' : 'password'}}" class="form-control" ng-model="user.password"
+                    name="password" placeholder="Min 8 chars" required autocomplete="new-password"
+                    ng-change="checkPwStrength()">
+                  <button type="button" class="btn btn-outline-secondary" ng-click="showPw=!showPw"
+                    style="font-size:0.8rem">{{showPw ? '🙈' : '👁️'}}</button>
+                </div>
+                <!-- Password strength bar -->
+                <div class="mt-1" ng-show="user.password">
+                  <div style="height:4px;border-radius:4px;background:#e2e8f0">
+                    <div style="height:4px;border-radius:4px;transition:all .3s"
+                      ng-style="{'width': pwStrength.pct + '%', 'background': pwStrength.color}"></div>
+                  </div>
+                  <small ng-style="{'color': pwStrength.color}">{{pwStrength.label}}</small>
+                </div>
+                <small class="text-muted d-block" style="font-size:0.74rem">
+                  Must include uppercase, number &amp; special char (!@#$...)
+                </small>
+              </div>
             </div>
 
-            <div class="mb-3">
-              <label class="form-label fw-semibold small">Password *</label>
-              <input type="password" class="form-control" ng-model="user.password" name="password"
-                placeholder="Minimum 6 characters" minlength="6" required autocomplete="new-password">
-              <small class="text-danger" ng-show="regForm.password.$touched && regForm.password.$error.minlength">
-                Password must be at least 6 characters
-              </small>
+            <!-- ── SECTION: Academic Info ────────────────────── -->
+            <p class="fw-bold text-primary mb-2 mt-1" style="font-size:0.82rem;letter-spacing:.5px">🎓 ACADEMIC DETAILS
+            </p>
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">Department *</label>
+                <select class="form-select" ng-model="user.department" name="department" required
+                  ng-change="syncBranch()">
+                  <option value="">Select department</option>
+                  <option value="Computer Engineering">💻 Computer Engineering</option>
+                  <option value="Information Technology">🖥️ Information Technology</option>
+                  <option value="Electronics &amp; Communication">📡 Electronics &amp; Communication</option>
+                  <option value="Mechanical Engineering">⚙️ Mechanical Engineering</option>
+                  <option value="Civil Engineering">🏗️ Civil Engineering</option>
+                  <option value="Electrical Engineering">⚡ Electrical Engineering</option>
+                  <option value="Chemical Engineering">🧪 Chemical Engineering</option>
+                  <option value="Other">📚 Other</option>
+                </select>
+                <small class="text-danger"
+                  ng-show="regForm.department.$touched && regForm.department.$invalid">Department is required</small>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold small">Branch Code</label>
+                <input type="text" class="form-control" ng-model="user.branch" placeholder="e.g. CE" maxlength="5"
+                  style="text-transform:uppercase">
+                <small class="text-muted" style="font-size:0.73rem">Auto-filled or enter manually</small>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold small">Semester *</label>
+                <select class="form-select" ng-model="user.semester" name="semester" required>
+                  <option value="">Sem</option>
+                  <option value="1">1st</option>
+                  <option value="2">2nd</option>
+                  <option value="3">3rd</option>
+                  <option value="4">4th</option>
+                  <option value="5">5th</option>
+                  <option value="6">6th</option>
+                  <option value="7">7th</option>
+                  <option value="8">8th</option>
+                </select>
+                <small class="text-danger"
+                  ng-show="regForm.semester.$touched && regForm.semester.$invalid">Required</small>
+              </div>
             </div>
 
-            <div class="mb-4">
-              <label class="form-label fw-semibold small">Branch</label>
-              <select class="form-select" ng-model="user.branch">
-                <option value="">Select branch</option>
-                <option value="CE">💻 Computer Engineering</option>
-                <option value="IT">🖥️ Information Technology</option>
-                <option value="EC">📡 Electronics</option>
-                <option value="ME">⚙️ Mechanical</option>
-                <option value="CL">🏗️ Civil</option>
-              </select>
+            <!-- ── SECTION: Optional extras ──────────────────── -->
+            <p class="fw-bold text-primary mb-2 mt-1" style="font-size:0.82rem;letter-spacing:.5px">✨ OPTIONAL EXTRAS
+            </p>
+            <div class="row g-3 mb-4">
+              <div class="col-12">
+                <label class="form-label fw-semibold small">Skills</label>
+                <input type="text" class="form-control" ng-model="user.skills"
+                  placeholder="Python, React, DBMS, DSA (comma separated)">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold small">Interests</label>
+                <input type="text" class="form-control" ng-model="user.interests"
+                  placeholder="Web dev, Machine Learning, Competitive Programming">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold small">Short Bio</label>
+                <textarea class="form-control" rows="2" ng-model="user.bio"
+                  placeholder="Tell others a little about yourself..."></textarea>
+              </div>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100 py-2" ng-disabled="regForm.$invalid || loading">
+            <button type="submit" class="btn btn-primary w-100 py-2"
+              ng-disabled="regForm.$invalid || loading || !pwStrength.ok">
               <span ng-show="!loading">🚀 Submit Registration</span>
               <span ng-show="loading">Submitting...</span>
             </button>
           </form>
 
-          <hr class="my-4">
+          <hr class="my-3">
           <div class="text-center">
             <small class="text-muted">Already have an account? </small>
             <a href="#!/login" class="fw-semibold text-decoration-none" style="color:#4f46e5">Sign in →</a>

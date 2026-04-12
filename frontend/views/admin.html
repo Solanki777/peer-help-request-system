@@ -116,39 +116,85 @@
 
         <!-- Edit User Panel -->
         <div class="card mb-3 border-2 border-warning" ng-show="editingUser">
-            <div class="card-header fw-bold" style="background:#fff3cd;color:#856404">
-                ✏️ Editing Profile: {{editingUser.name}}
+            <div class="card-header fw-bold d-flex justify-content-between" style="background:#fff3cd;color:#856404">
+                <span>✏️ Editing: {{editingUser.name}}</span>
+                <button class="btn btn-sm btn-outline-secondary" ng-click="cancelEdit()">✕ Close</button>
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-3">
+                    <div class="col-12"><small class="fw-bold text-primary" style="letter-spacing:.5px">👤
+                            PERSONAL</small></div>
+                    <div class="col-md-4">
                         <label class="form-label small fw-semibold">Full Name</label>
                         <input type="text" class="form-control form-control-sm" ng-model="editingUser.name">
                     </div>
-                    <div class="col-md-2">
-                        <label class="form-label small fw-semibold">Branch</label>
-                        <select class="form-select form-select-sm" ng-model="editingUser.branch">
-                            <option value="">None</option>
-                            <option value="CE">CE</option>
-                            <option value="IT">IT</option>
-                            <option value="EC">EC</option>
-                            <option value="ME">ME</option>
-                            <option value="CL">Civil</option>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Enrollment Number</label>
+                        <input type="text" class="form-control form-control-sm" ng-model="editingUser.enrollment">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Contact</label>
+                        <input type="tel" class="form-control form-control-sm" ng-model="editingUser.contact"
+                            placeholder="10-digit">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Date of Birth</label>
+                        <input type="date" class="form-control form-control-sm" ng-model="editingUser.dob">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">City</label>
+                        <input type="text" class="form-control form-control-sm" ng-model="editingUser.city">
+                    </div>
+                    <div class="col-12 mt-1"><small class="fw-bold text-primary" style="letter-spacing:.5px">🎓
+                            ACADEMIC</small></div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Department</label>
+                        <select class="form-select form-select-sm" ng-model="editingUser.department">
+                            <option value="">Select</option>
+                            <option value="Computer Engineering">Computer Engineering</option>
+                            <option value="Information Technology">Information Technology</option>
+                            <option value="Electronics &amp; Communication">Electronics &amp; Communication</option>
+                            <option value="Mechanical Engineering">Mechanical Engineering</option>
+                            <option value="Civil Engineering">Civil Engineering</option>
+                            <option value="Electrical Engineering">Electrical Engineering</option>
+                            <option value="Chemical Engineering">Chemical Engineering</option>
+                            <option value="Other">Other</option>
                         </select>
                     </div>
                     <div class="col-md-2">
+                        <label class="form-label small fw-semibold">Branch Code</label>
+                        <input type="text" class="form-control form-control-sm" ng-model="editingUser.branch"
+                            maxlength="5" style="text-transform:uppercase">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">Semester</label>
+                        <select class="form-select form-select-sm" ng-model="editingUser.semester">
+                            <option value="">—</option>
+                            <option value="1">1st</option>
+                            <option value="2">2nd</option>
+                            <option value="3">3rd</option>
+                            <option value="4">4th</option>
+                            <option value="5">5th</option>
+                            <option value="6">6th</option>
+                            <option value="7">7th</option>
+                            <option value="8">8th</option>
+                        </select>
+                    </div>
+                    <div class="col-12 mt-1"><small class="fw-bold text-primary" style="letter-spacing:.5px">⚙️
+                            ACCOUNT</small></div>
+                    <div class="col-md-3">
                         <label class="form-label small fw-semibold">Role</label>
                         <select class="form-select form-select-sm" ng-model="editingUser.role">
                             <option value="student">Student</option>
                             <option value="admin">Admin</option>
                         </select>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label small fw-semibold">Status</label>
                         <select class="form-select form-select-sm" ng-model="editingUser.status">
-                            <option value="pending">Pending</option>
-                            <option value="approved">Approved</option>
-                            <option value="rejected">Rejected</option>
+                            <option value="pending">⏳ Pending</option>
+                            <option value="approved">✅ Approved</option>
+                            <option value="rejected">❌ Rejected</option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -156,14 +202,25 @@
                         <input type="number" class="form-control form-control-sm" ng-model="editingUser.reputation"
                             min="0">
                     </div>
-                    <div class="col-md-5">
+                    <div class="col-12 mt-1"><small class="fw-bold text-primary" style="letter-spacing:.5px">✨
+                            EXTRAS</small></div>
+                    <div class="col-md-6">
                         <label class="form-label small fw-semibold">Skills (comma separated)</label>
                         <input type="text" class="form-control form-control-sm" ng-model="editingUser.skills"
                             placeholder="Python, React, DSA">
                     </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Interests</label>
+                        <input type="text" class="form-control form-control-sm" ng-model="editingUser.interests"
+                            placeholder="Web dev, ML...">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Bio</label>
+                        <textarea class="form-control form-control-sm" rows="2" ng-model="editingUser.bio"></textarea>
+                    </div>
                 </div>
                 <div class="mt-3 d-flex gap-2">
-                    <button class="btn btn-sm btn-success" ng-click="saveUser()">💾 Save Changes</button>
+                    <button class="btn btn-sm btn-success" ng-click="saveUser()">💾 Save All Changes</button>
                     <button class="btn btn-sm btn-secondary" ng-click="cancelEdit()">✕ Cancel</button>
                 </div>
             </div>
@@ -175,9 +232,9 @@
                 <table class="table table-hover admin-table mb-0">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Branch</th>
+                            <th>Name / Enrollment</th>
+                            <th>Email / Contact</th>
+                            <th>Dept / Sem</th>
                             <th>Status</th>
                             <th>Rep</th>
                             <th>Registered</th>
@@ -190,9 +247,25 @@
                             <td>
                                 <span class="fw-semibold">{{user.name}}</span>
                                 <span class="badge bg-danger ms-1" ng-show="user.role==='admin'">ADMIN</span>
+                                <div class="text-muted" style="font-size:0.74rem" ng-show="user.enrollment">
+                                    🎫 {{user.enrollment}}
+                                </div>
+                                <div class="text-muted" style="font-size:0.74rem" ng-show="user.dob">
+                                    🎂 {{user.dob | date:'dd MMM yyyy'}}
+                                </div>
                             </td>
-                            <td><small class="text-muted">{{user.email}}</small></td>
-                            <td><span class="badge bg-light text-dark border">{{user.branch || '—'}}</span></td>
+                            <td>
+                                <small class="text-muted d-block">{{user.email}}</small>
+                                <small class="text-muted" ng-show="user.contact">📞 {{user.contact}}</small>
+                                <small class="text-muted d-block" ng-show="user.city">📍 {{user.city}}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary" ng-show="user.branch">{{user.branch}}</span>
+                                <div style="font-size:0.74rem" ng-show="user.department" class="text-muted">
+                                    {{user.department}}</div>
+                                <span class="badge bg-info text-dark mt-1" ng-show="user.semester">Sem
+                                    {{user.semester}}</span>
+                            </td>
                             <td>
                                 <span class="badge"
                                     ng-class="user.status==='approved' ? 'bg-success' : user.status==='rejected' ? 'bg-danger' : 'bg-warning text-dark'">
@@ -204,20 +277,14 @@
                             <td>
                                 <div class="d-flex gap-1 flex-wrap">
                                     <button class="btn btn-xs btn-success" ng-show="user.status !== 'approved'"
-                                        ng-click="approveUser(user)" title="Approve this student">✅ Approve</button>
+                                        ng-click="approveUser(user)" title="Approve">✅</button>
                                     <button class="btn btn-xs btn-danger" ng-show="user.status !== 'rejected'"
-                                        ng-click="rejectUser(user)" title="Reject this student">❌ Reject</button>
+                                        ng-click="rejectUser(user)" title="Reject">❌</button>
                                     <button class="btn btn-xs btn-primary" ng-click="startEditUser(user)"
                                         title="Edit profile">✏️ Edit</button>
                                     <button class="btn btn-xs btn-outline-danger" ng-click="deleteUser(user)"
                                         title="Delete permanently">🗑️</button>
                                 </div>
-                            </td>
-                        </tr>
-                        <tr ng-show="users.length === 0">
-                            <td colspan="7" class="text-center text-muted py-5">
-                                <div style="font-size:2rem">👥</div>
-                                No users found for this filter
                             </td>
                         </tr>
                     </tbody>
@@ -295,7 +362,8 @@
                             title="{{q.isHidden ? 'Restore' : 'Hide'}}">
                             {{q.isHidden ? '👁️ Show' : '🙈 Hide'}}
                         </button>
-                        <button class="btn btn-xs btn-outline-info" ng-show="q.status === 'approved'" ng-click="expandQ(q)">
+                        <button class="btn btn-xs btn-outline-info" ng-show="q.status === 'approved'"
+                            ng-click="expandQ(q)">
                             {{expandedQ === q._id ? '▴' : '▾'}} Answers
                         </button>
                         <button class="btn btn-xs btn-outline-danger" ng-click="deleteQ(q)">🗑️ Delete</button>
@@ -379,8 +447,10 @@
                     <small class="text-muted">🕐 {{s.createdAt | date:'dd MMM yyyy'}}</small>
                 </div>
                 <h6 class="fw-bold mb-1">{{s.title}}</h6>
-                <p class="text-muted small mb-2" style="white-space:pre-wrap">{{s.content | limitTo:300}}{{s.content.length > 300 ? '...' : ''}}</p>
-                <small class="text-muted">👤 <strong>{{s.userName}}</strong> <span ng-show="s.branch">· {{s.branch}}</span></small>
+                <p class="text-muted small mb-2" style="white-space:pre-wrap">{{s.content |
+                    limitTo:300}}{{s.content.length > 300 ? '...' : ''}}</p>
+                <small class="text-muted">👤 <strong>{{s.userName}}</strong> <span ng-show="s.branch">·
+                        {{s.branch}}</span></small>
 
                 <!-- Admin note -->
                 <div class="alert alert-light border-start border-3 border-primary py-1 px-2 mt-2 small"
@@ -402,9 +472,10 @@
                     <!-- Approved: admin can still add a note -->
                     <div ng-show="s.status === 'approved'" class="d-flex gap-2 align-items-center flex-wrap">
                         <small class="text-muted">Add note:</small>
-                        <input type="text" class="form-control form-control-sm" style="max-width:280px" ng-model="statusNote[s._id]"
-                            placeholder="Optional admin note...">
-                        <button class="btn btn-xs btn-outline-primary" ng-click="setSuggestionStatus(s, 'approved')">💾 Save Note</button>
+                        <input type="text" class="form-control form-control-sm" style="max-width:280px"
+                            ng-model="statusNote[s._id]" placeholder="Optional admin note...">
+                        <button class="btn btn-xs btn-outline-primary" ng-click="setSuggestionStatus(s, 'approved')">💾
+                            Save Note</button>
                         <button class="btn btn-xs btn-outline-danger" ng-click="rejectSuggestion(s)">❌ Remove</button>
                     </div>
                 </div>

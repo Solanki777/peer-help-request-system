@@ -44,15 +44,21 @@ router.get('/users', ...G, async (req, res) => {
 
 router.put('/users/:id', ...G, async (req, res) => {
     try {
-        const allowed = ['status', 'role', 'name', 'branch', 'skills', 'reputation'];
+        const allowed = [
+            'status', 'role', 'name', 'enrollment', 'contact', 'dob',
+            'department', 'branch', 'semester', 'city', 'bio', 'interests',
+            'skills', 'reputation'
+        ];
         const updates = {};
         allowed.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
 
         if (updates.skills && typeof updates.skills === 'string')
             updates.skills = updates.skills.split(',').map(s => s.trim()).filter(Boolean);
-
         if (updates.reputation !== undefined)
             updates.reputation = parseInt(updates.reputation) || 0;
+        if (updates.semester !== undefined)
+            updates.semester = parseInt(updates.semester) || null;
+        if (updates.dob) updates.dob = new Date(updates.dob);
 
         const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true }).select('-password');
         if (!user) return res.status(404).json({ message: 'User not found' });

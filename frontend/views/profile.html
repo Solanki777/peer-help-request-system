@@ -1,63 +1,27 @@
-<div class="container py-4">
+<div class="container py-4" style="max-width:960px">
     <button class="btn btn-outline-secondary mb-3" ng-click="goBack()">← Back</button>
 
-    <div class="row">
-        <!-- ── LEFT: USER CARD ──────────────────────────────────────────────── -->
-        <div class="col-md-4 mb-4">
+    <div class="row g-4">
+        <!-- ── LEFT: IDENTITY CARD ───────────────────────────────────────────── -->
+        <div class="col-md-4">
             <div class="card text-center">
                 <div class="card-body py-4">
+                    <!-- Avatar -->
                     <div class="profile-avatar mx-auto mb-2">
                         {{(profileData.name || '?').charAt(0).toUpperCase()}}
                     </div>
-                    <h4 class="mt-2">{{profileData.name}}</h4>
-                    <p class="text-muted mb-1">{{profileData.email}}</p>
-                    <span class="badge bg-primary me-1">{{profileData.branch || 'No branch'}}</span>
-                    <span class="badge bg-danger" ng-show="profileData.role === 'admin'">ADMIN</span>
-                    <hr>
-                    <!-- Edit profile toggle -->
-                    <button class="btn btn-sm btn-outline-primary mb-3"
-                        ng-click="showEdit = !showEdit">
-                        <span ng-if="!showEdit">✏️ Edit Profile</span>
-                        <span ng-if="showEdit">✕ Cancel</span>
-                    </button>
-
-                    <!-- Edit form -->
-                    <div ng-show="showEdit" class="text-start mb-3">
-                        <div class="mb-2">
-                            <label class="form-label small fw-semibold">Name</label>
-                            <input type="text" class="form-control form-control-sm"
-                                ng-model="editData.name" placeholder="Your name">
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label small fw-semibold">Branch</label>
-                            <select class="form-select form-select-sm" ng-model="editData.branch">
-                                <option value="">No branch</option>
-                                <option value="CE">Computer Engineering</option>
-                                <option value="IT">Information Technology</option>
-                                <option value="EC">Electronics</option>
-                                <option value="ME">Mechanical</option>
-                                <option value="CL">Civil</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label small fw-semibold">Skills (comma separated)</label>
-                            <input type="text" class="form-control form-control-sm"
-                                ng-model="editData.skills" placeholder="Python, React, DBMS">
-                        </div>
-                        <div class="alert alert-info p-2 small" ng-show="editMessage">{{editMessage}}</div>
-                        <button class="btn btn-sm btn-success w-100" ng-click="saveProfile()">
-                            Save Changes
-                        </button>
+                    <h4 class="mt-2 mb-0">{{profileData.name}}</h4>
+                    <p class="text-muted small mb-1">{{profileData.email}}</p>
+                    <div class="mb-2">
+                        <span class="badge bg-primary me-1">{{profileData.department || profileData.branch || 'No
+                            dept'}}</span>
+                        <span class="badge bg-info text-dark me-1" ng-show="profileData.semester">Sem
+                            {{profileData.semester}}</span>
+                        <span class="badge bg-danger" ng-show="profileData.role === 'admin'">ADMIN</span>
                     </div>
 
-                    <!-- Skills display -->
-                    <div class="mb-2" ng-show="profileData.skills && profileData.skills.length > 0">
-                        <span class="tag-badge" ng-repeat="s in profileData.skills">{{s}}</span>
-                    </div>
-
-                    <hr>
                     <!-- Stats row -->
-                    <div class="row text-center">
+                    <div class="row text-center mt-3">
                         <div class="col-4">
                             <div class="fw-bold fs-5 text-warning">{{profileData.reputation || 0}}</div>
                             <small class="text-muted">Points</small>
@@ -71,28 +35,180 @@
                             <small class="text-muted">Answers</small>
                         </div>
                     </div>
+
+                    <hr>
+
+                    <!-- Quick info -->
+                    <div class="text-start small">
+                        <div class="mb-1" ng-show="profileData.enrollment">
+                            🎫 <strong>Enrollment:</strong> {{profileData.enrollment}}
+                        </div>
+                        <div class="mb-1" ng-show="profileData.contact">
+                            📞 <strong>Contact:</strong> {{profileData.contact}}
+                        </div>
+                        <div class="mb-1" ng-show="profileData.dob">
+                            🎂 <strong>DOB:</strong> {{profileData.dob | date:'dd MMM yyyy'}}
+                        </div>
+                        <div class="mb-1" ng-show="profileData.city">
+                            📍 <strong>City:</strong> {{profileData.city}}
+                        </div>
+                        <div class="mb-1" ng-show="profileData.interests">
+                            💡 <strong>Interests:</strong> {{profileData.interests}}
+                        </div>
+                        <div class="mb-1" ng-show="profileData.bio" style="white-space:pre-wrap">
+                            📖 <em>{{profileData.bio}}</em>
+                        </div>
+                    </div>
+
+                    <!-- Skills -->
+                    <div class="mt-2 text-start" ng-show="profileData.skills && profileData.skills.length > 0">
+                        <small class="text-muted fw-semibold">Skills:</small><br>
+                        <span class="tag-badge" ng-repeat="s in profileData.skills">{{s}}</span>
+                    </div>
+
+                    <hr>
+                    <!-- Edit toggle -->
+                    <button class="btn btn-sm btn-outline-primary w-100" ng-click="showEdit = !showEdit">
+                        <span ng-if="!showEdit">✏️ Edit Profile</span>
+                        <span ng-if="showEdit">✕ Cancel</span>
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- ── RIGHT: TABS ──────────────────────────────────────────────────── -->
+        <!-- ── RIGHT: TABS + EDIT FORM ───────────────────────────────────────── -->
         <div class="col-md-8">
-            <div class="card">
 
-                <!-- Tab header -->
+            <!-- ── EDIT FORM (shown when toggled) ────────────────────────────── -->
+            <div class="card mb-3" ng-show="showEdit">
+                <div class="card-header">✏️ Edit Profile</div>
+                <div class="card-body">
+                    <div class="alert py-2 small" ng-show="editMessage"
+                        ng-class="editMessage.startsWith('✅') ? 'alert-success' : 'alert-danger'"
+                        style="border-radius:8px">{{editMessage}}</div>
+
+                    <div class="row g-3">
+                        <!-- Personal -->
+                        <div class="col-12">
+                            <p class="fw-bold text-primary mb-1" style="font-size:0.78rem;letter-spacing:.5px">👤
+                                PERSONAL</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Full Name</label>
+                            <input type="text" class="form-control form-control-sm" ng-model="editData.name">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Enrollment Number</label>
+                            <input type="text" class="form-control form-control-sm" ng-model="editData.enrollment">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Contact</label>
+                            <input type="tel" class="form-control form-control-sm" ng-model="editData.contact"
+                                placeholder="10-digit mobile">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Date of Birth</label>
+                            <input type="date" class="form-control form-control-sm" ng-model="editData.dob">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">City</label>
+                            <input type="text" class="form-control form-control-sm" ng-model="editData.city"
+                                placeholder="e.g. Ahmedabad">
+                        </div>
+
+                        <!-- Academic -->
+                        <div class="col-12 mt-1">
+                            <p class="fw-bold text-primary mb-1" style="font-size:0.78rem;letter-spacing:.5px">🎓
+                                ACADEMIC</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Department</label>
+                            <select class="form-select form-select-sm" ng-model="editData.department"
+                                ng-change="syncEditBranch()">
+                                <option value="">Select department</option>
+                                <option value="Computer Engineering">💻 Computer Engineering</option>
+                                <option value="Information Technology">🖥️ Information Technology</option>
+                                <option value="Electronics &amp; Communication">📡 Electronics &amp; Communication
+                                </option>
+                                <option value="Mechanical Engineering">⚙️ Mechanical Engineering</option>
+                                <option value="Civil Engineering">🏗️ Civil Engineering</option>
+                                <option value="Electrical Engineering">⚡ Electrical Engineering</option>
+                                <option value="Chemical Engineering">🧪 Chemical Engineering</option>
+                                <option value="Other">📚 Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Branch Code</label>
+                            <input type="text" class="form-control form-control-sm" ng-model="editData.branch"
+                                placeholder="CE" maxlength="5" style="text-transform:uppercase">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Semester</label>
+                            <select class="form-select form-select-sm" ng-model="editData.semester">
+                                <option value="">—</option>
+                                <option ng-repeat="n in [1,2,3,4,5,6,7,8]" value="{{n}}">
+                                    {{n}}{{n===1?'st':n===2?'nd':n===3?'rd':'th'}}</option>
+                            </select>
+                        </div>
+
+                        <!-- Extras -->
+                        <div class="col-12 mt-1">
+                            <p class="fw-bold text-primary mb-1" style="font-size:0.78rem;letter-spacing:.5px">✨ EXTRAS
+                            </p>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Skills (comma separated)</label>
+                            <input type="text" class="form-control form-control-sm" ng-model="editData.skills"
+                                placeholder="Python, React, DBMS">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Interests</label>
+                            <input type="text" class="form-control form-control-sm" ng-model="editData.interests"
+                                placeholder="Web dev, ML, Competitive Programming">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Bio</label>
+                            <textarea class="form-control form-control-sm" rows="2" ng-model="editData.bio"
+                                placeholder="Short about-me..."></textarea>
+                        </div>
+
+                        <!-- Change password -->
+                        <div class="col-12 mt-1">
+                            <p class="fw-bold text-primary mb-1" style="font-size:0.78rem;letter-spacing:.5px">🔒 CHANGE
+                                PASSWORD (optional)</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Current Password</label>
+                            <input type="password" class="form-control form-control-sm"
+                                ng-model="editData.currentPassword">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">New Password</label>
+                            <input type="password" class="form-control form-control-sm" ng-model="editData.newPassword"
+                                placeholder="Min 8 chars, uppercase, number, special">
+                        </div>
+
+                        <div class="col-12">
+                            <button class="btn btn-success btn-sm px-4" ng-click="saveProfile()">💾 Save
+                                Changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Q & A TABS ─────────────────────────────────────────────────── -->
+            <div class="card">
                 <div class="card-header p-0">
                     <ul class="nav nav-tabs card-header-tabs ms-0">
                         <li class="nav-item">
-                            <button class="nav-link"
-                                ng-class="{active: activeTab === 'questions'}"
+                            <button class="nav-link" ng-class="{active: activeTab === 'questions'}"
                                 ng-click="setTab('questions')">
                                 📋 My Questions
                                 <span class="badge bg-primary ms-1">{{myQuestions.length}}</span>
                             </button>
                         </li>
                         <li class="nav-item">
-                            <button class="nav-link"
-                                ng-class="{active: activeTab === 'answers'}"
+                            <button class="nav-link" ng-class="{active: activeTab === 'answers'}"
                                 ng-click="setTab('answers')">
                                 💬 My Answers
                                 <span class="badge bg-success ms-1">{{myAnswers.length}}</span>
@@ -101,65 +217,54 @@
                     </ul>
                 </div>
 
-                <!-- ── MY QUESTIONS TAB ──────────────────────────────────────── -->
+                <!-- My Questions -->
                 <div class="card-body p-0" ng-show="activeTab === 'questions'">
                     <div class="text-center text-muted py-4" ng-show="myQuestions.length === 0">
                         You haven't posted any questions yet.
                     </div>
-                    <div class="profile-list-item"
-                         ng-repeat="q in myQuestions"
-                         ng-click="goToQuestion(q._id)"
-                         title="Click to view question">
+                    <div class="profile-list-item" ng-repeat="q in myQuestions" ng-click="goToQuestion(q._id)"
+                        title="Click to view question">
                         <div class="d-flex justify-content-between align-items-start">
                             <div style="flex:1">
                                 <div class="fw-semibold profile-item-title">{{q.title}}</div>
                                 <div class="mt-1">
                                     <span class="subject-badge me-1">{{q.subject}}</span>
+                                    <span class="badge bg-warning text-dark me-1" ng-show="q.status === 'pending'">⏳
+                                        Pending</span>
                                     <small class="text-muted">{{q.createdAt | date:'mediumDate'}}</small>
                                 </div>
                             </div>
                             <div class="text-end ms-3 flex-shrink-0">
-                                <span class="badge bg-light text-dark border">
-                                    💬 {{q.answersCount || 0}} answers
-                                </span>
+                                <span class="badge bg-light text-dark border">💬 {{q.answersCount || 0}} answers</span>
                                 <div class="mt-1">
                                     <span class="badge bg-success" ng-show="q.answersCount > 0">Answered</span>
-                                    <span class="badge bg-warning text-dark" ng-show="!q.answersCount">Open</span>
+                                    <span class="badge bg-warning text-dark"
+                                        ng-show="!q.answersCount && q.status === 'approved'">Open</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- ── MY ANSWERS TAB ────────────────────────────────────────── -->
+                <!-- My Answers -->
                 <div class="card-body p-0" ng-show="activeTab === 'answers'">
                     <div class="text-center text-muted py-4" ng-show="myAnswers.length === 0">
                         You haven't answered any questions yet.
                     </div>
-                    <div class="profile-list-item"
-                         ng-repeat="a in myAnswers"
-                         ng-click="goToQuestion(a.requestId)"
-                         title="Click to view the question">
+                    <div class="profile-list-item" ng-repeat="a in myAnswers" ng-click="goToQuestion(a.requestId)"
+                        title="Click to view the question">
                         <div class="d-flex justify-content-between align-items-start">
                             <div style="flex:1">
-                                <!-- The question this answer belongs to -->
-                                <div class="text-muted small mb-1">
-                                    Question:
-                                </div>
+                                <div class="text-muted small mb-1">Question:</div>
                                 <div class="fw-semibold profile-item-title">{{a.requestTitle}}</div>
                                 <div class="mt-1">
                                     <span class="subject-badge me-1">{{a.requestSubject}}</span>
                                     <small class="text-muted">Answered on {{a.createdAt | date:'mediumDate'}}</small>
                                 </div>
-                                <!-- Answer preview -->
-                                <p class="text-muted small mt-2 mb-0 answer-preview">
-                                    {{a.content}}
-                                </p>
+                                <p class="text-muted small mt-2 mb-0 answer-preview">{{a.content}}</p>
                             </div>
                             <div class="text-end ms-3 flex-shrink-0">
-                                <span class="badge bg-warning text-dark">
-                                    👍 {{a.votes}} votes
-                                </span>
+                                <span class="badge bg-warning text-dark">👍 {{a.votes}} votes</span>
                                 <div class="mt-1">
                                     <span class="badge bg-success" ng-show="a.isBest">⭐ Best Answer</span>
                                 </div>
@@ -167,8 +272,8 @@
                         </div>
                     </div>
                 </div>
-
             </div>
+
         </div>
     </div>
 </div>

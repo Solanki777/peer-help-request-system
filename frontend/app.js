@@ -102,14 +102,47 @@ app.controller('AuthCtrl', function ($scope, $http, $location, AuthService) {
     $scope.loading = true;
     $scope.message = '';
     $http.post(API + '/auth/register', $scope.user)
-      .then(function (res) {
-        $scope.registered = true;   // switch to success view
+      .then(function () {
+        $scope.registered = true;
         $scope.loading = false;
       })
       .catch(function (err) {
         $scope.message = err.data ? err.data.message : 'Registration failed';
         $scope.loading = false;
       });
+  };
+
+  // ── Password strength checker ─────────────────────────────────────────────
+  $scope.pwStrength = { pct: 0, color: '#e2e8f0', label: '', ok: false };
+  $scope.checkPwStrength = function () {
+    var pw = $scope.user.password || '';
+    var score = 0;
+    if (pw.length >= 8) score++;
+    if (/[A-Z]/.test(pw)) score++;
+    if (/[0-9]/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+    var map = [
+      { pct: 0, color: '#e2e8f0', label: '', ok: false },
+      { pct: 25, color: '#ef4444', label: '🔴 Very weak', ok: false },
+      { pct: 50, color: '#f59e0b', label: '🟠 Weak', ok: false },
+      { pct: 75, color: '#3b82f6', label: '🔵 Good', ok: false },
+      { pct: 100, color: '#10b981', label: '🟢 Strong', ok: true }
+    ];
+    $scope.pwStrength = map[score];
+  };
+
+  // Sync branch code from department selection
+  $scope.syncBranch = function () {
+    var map = {
+      'Computer Engineering': 'CE',
+      'Information Technology': 'IT',
+      'Electronics & Communication': 'EC',
+      'Mechanical Engineering': 'ME',
+      'Civil Engineering': 'CL',
+      'Electrical Engineering': 'EE',
+      'Chemical Engineering': 'CH'
+    };
+    if (map[$scope.user.department]) $scope.user.branch = map[$scope.user.department];
   };
 
   $scope.login = function () {
@@ -496,11 +529,12 @@ app.controller('ProfileCtrl', function ($scope, $http, $location, AuthService) {
       .then(function (res) {
         $scope.editMessage = '✅ Profile updated!';
         $scope.profileData = res.data.user;
-        $scope.showEdit = false;
+        $scope.editData.currentPassword = '';
+        $scope.editData.newPassword = '';
         // Update stored user so navbar name updates immediately
         var stored = AuthService.getUser();
-        if ($scope.editData.name) stored.name = res.data.user.name;
-        if ($scope.editData.branch) stored.branch = res.data.user.branch;
+        if (res.data.user.name) stored.name = res.data.user.name;
+        if (res.data.user.branch) stored.branch = res.data.user.branch;
         localStorage.setItem('user', JSON.stringify(stored));
       })
       .catch(function (err) {
@@ -508,13 +542,31 @@ app.controller('ProfileCtrl', function ($scope, $http, $location, AuthService) {
       });
   };
 
+  // Sync branch code in edit form
+  $scope.syncEditBranch = function () {
+    var map = {
+      'Computer Engineering': 'CE', 'Information Technology': 'IT',
+      'Electronics & Communication': 'EC', 'Mechanical Engineering': 'ME',
+      'Civil Engineering': 'CL', 'Electrical Engineering': 'EE', 'Chemical Engineering': 'CH'
+    };
+    if (map[$scope.editData.department]) $scope.editData.branch = map[$scope.editData.department];
+  };
+
   $http.get(API + '/auth/profile/' + $scope.currentUser.id)
     .then(function (res) {
       $scope.profileData = res.data;
-      // Pre-fill edit form with current values
+      // Pre-fill edit form with all fields
       $scope.editData = {
         name: res.data.name,
+        enrollment: res.data.enrollment || '',
+        contact: res.data.contact || '',
+        dob: res.data.dob ? res.data.dob.split('T')[0] : '',
+        department: res.data.department || '',
         branch: res.data.branch || '',
+        semester: res.data.semester || '',
+        city: res.data.city || '',
+        bio: res.data.bio || '',
+        interests: res.data.interests || '',
         skills: (res.data.skills || []).join(', ')
       };
     });
@@ -725,7 +777,15 @@ app.controller('AdminCtrl', function ($scope, $http, $location, AuthService) {
     $scope.editingUser = {
       _id: user._id,
       name: user.name,
+      enrollment: user.enrollment || '',
+      contact: user.contact || '',
+      dob: user.dob ? user.dob.split('T')[0] : '',
+      department: user.department || '',
       branch: user.branch || '',
+      semester: user.semester || '',
+      city: user.city || '',
+      bio: user.bio || '',
+      interests: user.interests || '',
       role: user.role,
       status: user.status,
       skills: (user.skills || []).join(', '),
