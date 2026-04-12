@@ -537,12 +537,9 @@ app.controller('SuggestionCtrl', function ($scope, $http, $location, AuthService
   $scope.newSuggestion = {};
   $scope.showForm = false;
   $scope.message = '';
-  $scope.searchQuery = '';
-  $scope.filterCat = '';
-  $scope.sortBy = 'newest';
+  $scope.loading = false;
   $scope.currentPage = 1;
   $scope.totalPages = 1;
-  $scope.totalCount = 0;
 
   // Comments state per suggestion
   $scope.comments = {};
@@ -551,33 +548,16 @@ app.controller('SuggestionCtrl', function ($scope, $http, $location, AuthService
   $scope.replyTo = {};
   $scope.replyLabel = {};
 
-  var CATEGORIES = ['Feature', 'Bug', 'Content', 'UI', 'Other'];
-  $scope.categories = CATEGORIES;
-
-  $scope.catIcon = function (cat) {
-    var icons = { Feature: '✨', Bug: '🐛', Content: '📚', UI: '🎨', Other: '💬' };
-    return icons[cat] || '💬';
-  };
-
   function authHeaders() { return { headers: { Authorization: AuthService.getToken() } }; }
 
-  // ── LOAD SUGGESTIONS ──────────────────────────────────────────────────────
+  // ── LOAD SUGGESTIONS (only approved ones come from API) ────────────────────
   $scope.loadSuggestions = function () {
     var url = API + '/suggestions?page=' + $scope.currentPage + '&limit=10';
-    if ($scope.filterCat) url += '&category=' + $scope.filterCat;
-    if ($scope.searchQuery) url += '&search=' + encodeURIComponent($scope.searchQuery);
-    if ($scope.sortBy) url += '&sort=' + $scope.sortBy;
-
     $http.get(url).then(function (res) {
       $scope.suggestions = res.data.suggestions;
       $scope.totalPages = res.data.totalPages;
-      $scope.totalCount = res.data.total;
     });
   };
-
-  $scope.doSearch = function () { $scope.currentPage = 1; $scope.loadSuggestions(); };
-  $scope.setSort = function (s) { $scope.sortBy = s; $scope.currentPage = 1; $scope.loadSuggestions(); };
-  $scope.setCat = function (c) { $scope.filterCat = c; $scope.currentPage = 1; $scope.loadSuggestions(); };
 
   $scope.getPages = function () {
     var p = [];
@@ -586,32 +566,20 @@ app.controller('SuggestionCtrl', function ($scope, $http, $location, AuthService
   };
   $scope.goToPage = function (p) { $scope.currentPage = p; $scope.loadSuggestions(); };
 
-  // ── POST SUGGESTION ───────────────────────────────────────────────────────
+  // ── POST SUGGESTION — will be pending until admin approves ────────────────
   $scope.postSuggestion = function () {
+    $scope.loading = true;
     $http.post(API + '/suggestions', $scope.newSuggestion, authHeaders())
-      .then(function () {
-        $scope.message = '✅ Suggestion posted!';
+      .then(function (res) {
+        $scope.message = res.data.message || '✅ Suggestion submitted for approval!';
         $scope.newSuggestion = {};
         $scope.showForm = false;
-        $scope.loadSuggestions();
+        $scope.loading = false;
       })
       .catch(function (err) {
         $scope.message = '❌ ' + (err.data ? err.data.message : 'Error');
+        $scope.loading = false;
       });
-  };
-
-  // ── VOTE ──────────────────────────────────────────────────────────────────
-  $scope.vote = function (s) {
-    $http.put(API + '/suggestions/' + s._id + '/vote', {}, authHeaders())
-      .then(function (res) {
-        s.votes = res.data.votes;
-        s.userVoted = res.data.voted;
-      });
-  };
-
-  $scope.hasVoted = function (s) {
-    if (!s || !s.votedBy || !$scope.currentUser) return false;
-    return s.votedBy.some(function (id) { return String(id) === String($scope.currentUser.id); });
   };
 
   // ── DELETE SUGGESTION ─────────────────────────────────────────────────────
@@ -672,23 +640,6 @@ app.controller('SuggestionCtrl', function ($scope, $http, $location, AuthService
     return c && $scope.currentUser && String(c.userId) === String($scope.currentUser.id);
   };
 
-  // Real-time
-  SocketService.socket.on('newSuggestion', function (s) {
-    $scope.$apply(function () {
-      var isOwn = $scope.currentUser && String(s.userId) === String($scope.currentUser.id);
-      var exists = $scope.suggestions.some(function (x) { return x._id === s._id; });
-      if (!isOwn && !exists) { s.commentCount = 0; $scope.suggestions.unshift(s); }
-    });
-  });
-
-  SocketService.socket.on('suggestionVote', function (data) {
-    $scope.$apply(function () {
-      $scope.suggestions.forEach(function (s) {
-        if (String(s._id) === String(data.id)) s.votes = data.votes;
-      });
-    });
-  });
-
   SocketService.socket.on('newSuggestionComment', function (data) {
     $scope.$apply(function () {
       var sid = data.suggestionId;
@@ -697,7 +648,6 @@ app.controller('SuggestionCtrl', function ($scope, $http, $location, AuthService
         var exists = $scope.comments[sid].some(function (c) { return c._id === data.comment._id; });
         if (!exists) $scope.comments[sid].push(data.comment);
       }
-      // Bump comment count on the card
       $scope.suggestions.forEach(function (s) {
         if (String(s._id) === String(sid)) s.commentCount = (s.commentCount || 0) + 1;
       });
@@ -801,7 +751,7 @@ app.controller('AdminCtrl', function ($scope, $http, $location, AuthService) {
   $scope.questions = [];
   $scope.qPage = 1;
   $scope.qTotalPages = 1;
-  $scope.qFilter = { search: '', subject: '', hidden: '' };
+  $scope.qFilter = { search: '', subject: '', status: 'pending', hidden: '' };
   $scope.expandedQ = null;
   $scope.qAnswers = {};
 
@@ -809,11 +759,24 @@ app.controller('AdminCtrl', function ($scope, $http, $location, AuthService) {
     var url = API + '/admin/questions?page=' + $scope.qPage + '&limit=15';
     if ($scope.qFilter.search) url += '&search=' + encodeURIComponent($scope.qFilter.search);
     if ($scope.qFilter.subject) url += '&subject=' + $scope.qFilter.subject;
+    if ($scope.qFilter.status) url += '&status=' + $scope.qFilter.status;
     if ($scope.qFilter.hidden !== '') url += '&hidden=' + $scope.qFilter.hidden;
     $http.get(url, H()).then(function (res) {
       $scope.questions = res.data.questions;
       $scope.qTotalPages = res.data.totalPages;
+      $scope.qPendingCount = res.data.pendingCount || 0;
     });
+  };
+
+  $scope.approveQuestion = function (q) {
+    $http.put(API + '/admin/questions/' + q._id + '/approve', {}, H())
+      .then(function () { $scope.message = '✅ Question approved!'; $scope.loadQuestions(); });
+  };
+
+  $scope.rejectQuestion = function (q) {
+    if (!confirm('Reject this question?')) return;
+    $http.put(API + '/admin/questions/' + q._id + '/reject', {}, H())
+      .then(function () { $scope.message = '❌ Question rejected.'; $scope.loadQuestions(); });
   };
 
   $scope.toggleHideQ = function (q) {
@@ -857,18 +820,30 @@ app.controller('AdminCtrl', function ($scope, $http, $location, AuthService) {
   $scope.adminSuggestions = [];
   $scope.sPage = 1;
   $scope.sTotalPages = 1;
-  $scope.sFilter = { status: '', category: '', search: '' };
+  $scope.sFilter = { status: 'pending', search: '' };
   $scope.statusNote = {};   // { id: note text }
 
   $scope.loadAdminSuggestions = function () {
     var url = API + '/admin/suggestions?page=' + $scope.sPage + '&limit=15';
     if ($scope.sFilter.status) url += '&status=' + $scope.sFilter.status;
-    if ($scope.sFilter.category) url += '&category=' + $scope.sFilter.category;
     if ($scope.sFilter.search) url += '&search=' + encodeURIComponent($scope.sFilter.search);
     $http.get(url, H()).then(function (res) {
       $scope.adminSuggestions = res.data.suggestions;
       $scope.sTotalPages = res.data.totalPages;
+      $scope.sPendingCount = res.data.pendingCount || 0;
     });
+  };
+
+  $scope.approveSuggestion = function (s) {
+    $http.put(API + '/admin/suggestions/' + s._id + '/approve', {}, H())
+      .then(function () { $scope.message = '✅ Suggestion approved!'; $scope.loadAdminSuggestions(); });
+  };
+
+  $scope.rejectSuggestion = function (s) {
+    var note = $scope.statusNote[s._id] || '';
+    if (!confirm('Reject this suggestion?')) return;
+    $http.put(API + '/admin/suggestions/' + s._id + '/reject', { adminNote: note }, H())
+      .then(function () { $scope.message = '❌ Suggestion rejected.'; $scope.loadAdminSuggestions(); });
   };
 
   $scope.setSuggestionStatus = function (s, status) {

@@ -13,25 +13,20 @@ function auth(req, res, next) {
     catch { res.status(401).json({ message: 'Invalid token' }); }
 }
 
-// ── GET ALL SUGGESTIONS (newest first, with comment count) ───────────────────
+// ── GET ALL SUGGESTIONS (only approved ones for students) ────────────────────
 router.get('/', async (req, res) => {
     try {
-        const filter = {};
-        if (req.query.category) filter.category = req.query.category;
-        if (req.query.search) {
-            const re = new RegExp(req.query.search, 'i');
-            filter.$or = [{ title: re }, { content: re }];
-        }
+        const filter = { status: 'approved' };
 
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
 
-        let sortObj = { createdAt: -1 };
-        if (req.query.sort === 'popular') sortObj = { votes: -1, createdAt: -1 };
-
         const total = await Suggestion.countDocuments(filter);
-        const suggestions = await Suggestion.find(filter).sort(sortObj).skip(skip).limit(limit);
+        const suggestions = await Suggestion.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
 
         // Attach comment count to each suggestion
         const enriched = await Promise.all(suggestions.map(async (s) => {
@@ -57,12 +52,12 @@ router.get('/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// ── POST NEW SUGGESTION ───────────────────────────────────────────────────────
+// ── POST NEW SUGGESTION — starts as pending ───────────────────────────────────
 router.post('/', auth, async (req, res) => {
     try {
-        const { title, content, category } = req.body;
+        const { title, content } = req.body;
         if (!title || !title.trim()) return res.status(400).json({ message: 'Title is required' });
-        if (!content || !content.trim()) return res.status(400).json({ message: 'Content is required' });
+        if (!content || !content.trim()) return res.status(400).json({ message: 'Description is required' });
 
         const s = new Suggestion({
             userId: req.user.id,
@@ -70,38 +65,12 @@ router.post('/', auth, async (req, res) => {
             branch: req.user.branch || '',
             title: title.trim(),
             content: content.trim(),
-            category: category || 'Other'
+            category: 'Other',
+            status: 'pending'   // ← requires admin approval before visible
         });
         await s.save();
 
-        const io = req.app.get('io');
-        io.emit('newSuggestion', s);
-
-        res.json({ message: 'Suggestion posted!', suggestion: s });
-    } catch (err) { res.status(500).json({ message: err.message }); }
-});
-
-// ── VOTE ON SUGGESTION (toggle — one vote per user) ──────────────────────────
-router.put('/:id/vote', auth, async (req, res) => {
-    try {
-        const s = await Suggestion.findById(req.params.id);
-        if (!s) return res.status(404).json({ message: 'Not found' });
-
-        const already = s.votedBy.some(id => id.toString() === req.user.id);
-        if (already) {
-            // Remove vote (toggle off)
-            s.votedBy = s.votedBy.filter(id => id.toString() !== req.user.id);
-            s.votes = Math.max(0, s.votes - 1);
-        } else {
-            s.votedBy.push(req.user.id);
-            s.votes += 1;
-        }
-        await s.save();
-
-        const io = req.app.get('io');
-        io.emit('suggestionVote', { id: s._id, votes: s.votes });
-
-        res.json({ votes: s.votes, voted: !already });
+        res.json({ message: '✅ Suggestion submitted! It will appear after admin approval.', suggestion: s });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 

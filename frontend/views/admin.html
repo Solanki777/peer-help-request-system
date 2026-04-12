@@ -32,11 +32,13 @@
         <li class="nav-item">
             <button class="nav-link" ng-class="{active: activeTab==='questions'}" ng-click="setTab('questions')">
                 📋 Questions
+                <span class="badge bg-warning text-dark ms-1" ng-show="qPendingCount > 0">{{qPendingCount}}</span>
             </button>
         </li>
         <li class="nav-item">
             <button class="nav-link" ng-class="{active: activeTab==='suggestions'}" ng-click="setTab('suggestions')">
                 💡 Suggestions
+                <span class="badge bg-warning text-dark ms-1" ng-show="sPendingCount > 0">{{sPendingCount}}</span>
             </button>
         </li>
         <li class="nav-item">
@@ -231,9 +233,18 @@
         <div class="card mb-3">
             <div class="card-body py-2">
                 <div class="row g-2">
-                    <div class="col-md-5">
+                    <div class="col-md-4">
                         <input type="text" class="form-control form-control-sm" ng-model="qFilter.search"
                             ng-change="loadQuestions()" placeholder="🔍 Search questions...">
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm" ng-model="qFilter.status"
+                            ng-change="loadQuestions()">
+                            <option value="pending">⏳ Pending Approval</option>
+                            <option value="approved">✅ Approved</option>
+                            <option value="rejected">❌ Rejected</option>
+                            <option value="">All Questions</option>
+                        </select>
                     </div>
                     <div class="col-md-2">
                         <select class="form-select form-select-sm" ng-model="qFilter.subject"
@@ -247,14 +258,9 @@
                             <option value="Other">Other</option>
                         </select>
                     </div>
-                    <div class="col-md-2">
-                        <select class="form-select form-select-sm" ng-model="qFilter.hidden"
-                            ng-change="loadQuestions()">
-                            <option value="">All</option>
-                            <option value="false">Visible only</option>
-                            <option value="true">Hidden only</option>
-                        </select>
-                    </div>
+                </div>
+                <div class="mt-2" ng-show="qPendingCount > 0">
+                    <span class="badge bg-warning text-dark">⏳ {{qPendingCount}} question(s) awaiting approval</span>
                 </div>
             </div>
         </div>
@@ -266,21 +272,30 @@
                     <div style="flex:1 1 0; min-width:0">
                         <div class="d-flex gap-2 align-items-center flex-wrap mb-1">
                             <span class="badge bg-secondary">{{q.subject}}</span>
-                            <span class="badge bg-danger" ng-show="q.isHidden">HIDDEN</span>
-                            <span class="fw-semibold text-truncate" style="max-width:400px">{{q.title}}</span>
+                            <span class="badge bg-warning text-dark" ng-show="q.status === 'pending'">⏳ Pending</span>
+                            <span class="badge bg-success" ng-show="q.status === 'approved'">✅ Approved</span>
+                            <span class="badge bg-danger" ng-show="q.status === 'rejected'">❌ Rejected</span>
+                            <span class="badge bg-dark" ng-show="q.isHidden">🙈 Hidden</span>
+                            <span class="fw-semibold text-truncate" style="max-width:350px">{{q.title}}</span>
                         </div>
                         <small class="text-muted">
                             👤 {{q.userName}} &nbsp;·&nbsp; 💬 {{q.answersCount}} answers &nbsp;·&nbsp;
                             🕐 {{q.createdAt | date:'dd MMM yyyy'}}
                         </small>
                     </div>
-                    <div class="d-flex gap-1 ms-3 flex-shrink-0">
-                        <button class="btn btn-xs" ng-click="toggleHideQ(q)"
+                    <div class="d-flex gap-1 ms-3 flex-shrink-0 flex-wrap">
+                        <!-- Approve / Reject for pending -->
+                        <button class="btn btn-xs btn-success" ng-show="q.status === 'pending'"
+                            ng-click="approveQuestion(q)">✅ Approve</button>
+                        <button class="btn btn-xs btn-danger" ng-show="q.status === 'pending'"
+                            ng-click="rejectQuestion(q)">❌ Reject</button>
+                        <!-- Standard moderation for approved -->
+                        <button class="btn btn-xs" ng-show="q.status === 'approved'" ng-click="toggleHideQ(q)"
                             ng-class="q.isHidden ? 'btn-outline-success' : 'btn-outline-warning'"
                             title="{{q.isHidden ? 'Restore' : 'Hide'}}">
                             {{q.isHidden ? '👁️ Show' : '🙈 Hide'}}
                         </button>
-                        <button class="btn btn-xs btn-outline-info" ng-click="expandQ(q)">
+                        <button class="btn btn-xs btn-outline-info" ng-show="q.status === 'approved'" ng-click="expandQ(q)">
                             {{expandedQ === q._id ? '▴' : '▾'}} Answers
                         </button>
                         <button class="btn btn-xs btn-outline-danger" ng-click="deleteQ(q)">🗑️ Delete</button>
@@ -333,31 +348,22 @@
         <div class="card mb-3">
             <div class="card-body py-2">
                 <div class="row g-2">
-                    <div class="col-md-4">
+                    <div class="col-md-5">
                         <input type="text" class="form-control form-control-sm" ng-model="sFilter.search"
-                            ng-change="loadAdminSuggestions()" placeholder="🔍 Search...">
+                            ng-change="loadAdminSuggestions()" placeholder="🔍 Search suggestions...">
                     </div>
                     <div class="col-md-3">
                         <select class="form-select form-select-sm" ng-model="sFilter.status"
                             ng-change="loadAdminSuggestions()">
-                            <option value="">All Status</option>
-                            <option value="Open">Open</option>
-                            <option value="Accepted">Accepted</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Rejected">Rejected</option>
+                            <option value="pending">⏳ Pending Approval</option>
+                            <option value="approved">✅ Approved</option>
+                            <option value="rejected">❌ Rejected</option>
+                            <option value="">All Suggestions</option>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <select class="form-select form-select-sm" ng-model="sFilter.category"
-                            ng-change="loadAdminSuggestions()">
-                            <option value="">All Categories</option>
-                            <option value="Feature">✨ Feature</option>
-                            <option value="Bug">🐛 Bug</option>
-                            <option value="Content">📚 Content</option>
-                            <option value="UI">🎨 UI</option>
-                            <option value="Other">💬 Other</option>
-                        </select>
-                    </div>
+                </div>
+                <div class="mt-2" ng-show="sPendingCount > 0">
+                    <span class="badge bg-warning text-dark">⏳ {{sPendingCount}} suggestion(s) awaiting approval</span>
                 </div>
             </div>
         </div>
@@ -366,40 +372,40 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <div class="d-flex gap-2 align-items-center">
-                        <span class="cat-badge">{{catIcon(s.category)}} {{s.category}}</span>
-                        <span class="badge" ng-class="'bg-' + statusColor(s.status)">{{s.status}}</span>
+                        <span class="badge bg-warning text-dark" ng-show="s.status === 'pending'">⏳ Pending</span>
+                        <span class="badge bg-success" ng-show="s.status === 'approved'">✅ Approved</span>
+                        <span class="badge bg-danger" ng-show="s.status === 'rejected'">❌ Rejected</span>
                     </div>
-                    <small class="text-muted">👍 {{s.votes}} · {{s.createdAt | date:'dd MMM yyyy'}}</small>
+                    <small class="text-muted">🕐 {{s.createdAt | date:'dd MMM yyyy'}}</small>
                 </div>
                 <h6 class="fw-bold mb-1">{{s.title}}</h6>
-                <p class="text-muted small mb-2">{{s.content | limitTo:300}}{{s.content.length > 300 ? '...' : ''}}</p>
-                <small class="text-muted">👤 {{s.userName}} <span ng-show="s.branch">· {{s.branch}}</span></small>
+                <p class="text-muted small mb-2" style="white-space:pre-wrap">{{s.content | limitTo:300}}{{s.content.length > 300 ? '...' : ''}}</p>
+                <small class="text-muted">👤 <strong>{{s.userName}}</strong> <span ng-show="s.branch">· {{s.branch}}</span></small>
 
-                <!-- Existing admin note -->
+                <!-- Admin note -->
                 <div class="alert alert-light border-start border-3 border-primary py-1 px-2 mt-2 small"
                     ng-show="s.adminNote">
                     📝 Note: <em>{{s.adminNote}}</em>
                 </div>
 
-                <!-- Status action row -->
+                <!-- Action row -->
                 <div class="mt-3 pt-2" style="border-top:1px solid #eee">
-                    <div class="row g-2 align-items-center">
-                        <div class="col-md-5">
+                    <!-- Pending: Approve or Reject -->
+                    <div ng-show="s.status === 'pending'" class="d-flex gap-2 flex-wrap align-items-center">
+                        <button class="btn btn-sm btn-success" ng-click="approveSuggestion(s)">✅ Approve</button>
+                        <div class="d-flex gap-2 flex-grow-1">
                             <input type="text" class="form-control form-control-sm" ng-model="statusNote[s._id]"
-                                placeholder="Optional note to student (e.g. reason for rejection)...">
+                                placeholder="Optional rejection reason...">
+                            <button class="btn btn-sm btn-danger" ng-click="rejectSuggestion(s)">❌ Reject</button>
                         </div>
-                        <div class="col-md-7">
-                            <div class="d-flex gap-2 flex-wrap">
-                                <button class="btn btn-xs btn-success" ng-click="setSuggestionStatus(s, 'Accepted')">✅
-                                    Accept</button>
-                                <button class="btn btn-xs btn-primary"
-                                    ng-click="setSuggestionStatus(s, 'In Progress')">🔧 In Progress</button>
-                                <button class="btn btn-xs btn-danger" ng-click="setSuggestionStatus(s, 'Rejected')">❌
-                                    Reject</button>
-                                <button class="btn btn-xs btn-secondary" ng-click="setSuggestionStatus(s, 'Open')">📋
-                                    Reset to Open</button>
-                            </div>
-                        </div>
+                    </div>
+                    <!-- Approved: admin can still add a note -->
+                    <div ng-show="s.status === 'approved'" class="d-flex gap-2 align-items-center flex-wrap">
+                        <small class="text-muted">Add note:</small>
+                        <input type="text" class="form-control form-control-sm" style="max-width:280px" ng-model="statusNote[s._id]"
+                            placeholder="Optional admin note...">
+                        <button class="btn btn-xs btn-outline-primary" ng-click="setSuggestionStatus(s, 'approved')">💾 Save Note</button>
+                        <button class="btn btn-xs btn-outline-danger" ng-click="rejectSuggestion(s)">❌ Remove</button>
                     </div>
                 </div>
             </div>

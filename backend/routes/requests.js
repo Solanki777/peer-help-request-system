@@ -14,15 +14,17 @@ function authMiddleware(req, res, next) {
   } catch { res.status(401).json({ message: 'Invalid token' }); }
 }
 
-// ── GET ALL REQUESTS ──────────────────────────────────────────────────────────
+// ── GET ALL REQUESTS (only approved ones for students) ────────────────────────
 router.get('/', async (req, res) => {
   try {
-    const filter = { isHidden: { $ne: true } };
+    const filter = { isHidden: { $ne: true }, status: 'approved' };
 
     if (req.query.subject) filter.subject = req.query.subject;
 
     if (req.query.userId) {
+      // Profile page: show own questions regardless of status
       filter.userId = req.query.userId;
+      delete filter.status;
     } else if (req.query.branch) {
       const branchRegex = new RegExp('(^|,)' + req.query.branch + '(,|$)');
       filter.$or = [
@@ -75,7 +77,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// ── CREATE REQUEST ────────────────────────────────────────────────────────────
+// ── CREATE REQUEST — starts as pending, awaits admin approval ─────────────────
 router.post('/', authMiddleware, async (req, res) => {
   try {
     const { title, description, subject, audience, tags } = req.body;
@@ -92,16 +94,13 @@ router.post('/', authMiddleware, async (req, res) => {
       tags: parsedTags,
       userId: req.user.id,
       userName: req.user.name,
-      branch: req.user.branch
+      branch: req.user.branch,
+      status: 'pending'   // ← requires admin approval before visible
     });
     await request.save();
 
-    await User.findByIdAndUpdate(req.user.id, { $inc: { reputation: 2 } });
-
-    const io = req.app.get('io');
-    io.emit('newRequest', request);
-
-    res.json({ message: 'Request created!', request });
+    // No reputation yet — awarded when admin approves
+    res.json({ message: '✅ Question submitted! It will appear after admin approval.', request });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -116,12 +115,9 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     if (request.userId.toString() !== req.user.id && req.user.role !== 'admin')
       return res.status(403).json({ message: 'Not authorized' });
 
-    // BUG FIX: Always cascade-delete comments for ALL answers of this question,
-    // regardless of whether answerIds is empty or not.
     const answers = await Answer.find({ requestId: req.params.id }).select('_id');
     const answerIds = answers.map(a => a._id);
 
-    // Delete all comments belonging to any answer of this question
     if (answerIds.length > 0) {
       await Comment.deleteMany({ answerId: { $in: answerIds } });
       await Answer.deleteMany({ requestId: req.params.id });

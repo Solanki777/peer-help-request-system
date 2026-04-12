@@ -1,11 +1,11 @@
-<div class="container py-3">
+<div class="container py-3" style="max-width:760px">
 
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
             <button class="btn btn-outline-secondary btn-sm me-2" ng-click="goBack()">← Back</button>
             <h4 class="d-inline fw-bold">💡 Suggestions</h4>
-            <small class="text-muted ms-2">Share ideas to improve PeerHelp GTU</small>
+            <small class="text-muted ms-2">Share ideas to improve our college</small>
         </div>
         <button class="btn btn-primary" ng-click="showForm = !showForm">
             <span ng-if="!showForm">+ New Suggestion</span>
@@ -22,6 +22,9 @@
     <div class="card mb-4" ng-show="showForm">
         <div class="card-header">📝 Post a Suggestion</div>
         <div class="card-body">
+            <div class="alert alert-warning py-2 small mb-3" style="border-radius:8px">
+                ⏳ Your suggestion will be visible after admin approval.
+            </div>
             <form ng-submit="postSuggestion()">
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Title *</label>
@@ -30,60 +33,23 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Description *</label>
-                    <textarea class="form-control" rows="4" ng-model="newSuggestion.content"
+                    <textarea class="form-control" rows="5" ng-model="newSuggestion.content"
                         placeholder="Explain your suggestion in detail — what problem it solves, how it would work..."
-                        required></textarea>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Category</label>
-                    <div class="d-flex flex-wrap gap-2">
-                        <button type="button" class="cat-chip" ng-repeat="cat in categories"
-                            ng-class="{active: newSuggestion.category === cat}" ng-click="newSuggestion.category = cat">
-                            {{catIcon(cat)}} {{cat}}
-                        </button>
-                    </div>
+                        required style="resize:vertical"></textarea>
                 </div>
                 <button type="submit" class="btn btn-success"
-                    ng-disabled="!newSuggestion.title || !newSuggestion.content">
-                    Post Suggestion
+                    ng-disabled="!newSuggestion.title || !newSuggestion.content || loading">
+                    <span ng-show="!loading">🚀 Submit Suggestion</span>
+                    <span ng-show="loading">Submitting...</span>
                 </button>
             </form>
         </div>
     </div>
 
-    <!-- ── SEARCH + FILTER + SORT ─────────────────────────────────────────────── -->
-    <div class="card mb-3">
-        <div class="card-body py-2">
-            <!-- Search -->
-            <div class="mb-2">
-                <input type="text" class="form-control search-bar" ng-model="searchQuery" ng-change="doSearch()"
-                    placeholder="🔍 Search suggestions...">
-            </div>
-            <!-- Category chips -->
-            <div class="d-flex flex-wrap gap-2 mb-2 align-items-center">
-                <small class="text-muted">Category:</small>
-                <button class="cat-chip" ng-class="{active: filterCat === ''}" ng-click="setCat('')">All</button>
-                <button class="cat-chip" ng-repeat="cat in categories" ng-class="{active: filterCat === cat}"
-                    ng-click="setCat(cat)">
-                    {{catIcon(cat)}} {{cat}}
-                </button>
-            </div>
-            <!-- Sort + count -->
-            <div class="d-flex flex-wrap gap-2 align-items-center">
-                <small class="text-muted">Sort:</small>
-                <button class="sort-btn" ng-class="{active: sortBy === 'newest'}" ng-click="setSort('newest')">🕐
-                    Newest</button>
-                <button class="sort-btn" ng-class="{active: sortBy === 'popular'}" ng-click="setSort('popular')">🔥
-                    Popular</button>
-                <small class="text-muted ms-auto">{{totalCount}} suggestion(s)</small>
-            </div>
-        </div>
-    </div>
-
     <!-- ── NO RESULTS ─────────────────────────────────────────────────────────── -->
-    <div class="text-center py-5 text-muted" ng-show="suggestions.length === 0">
+    <div class="text-center py-5 text-muted" ng-show="suggestions.length === 0 && !loading">
         <div style="font-size:3rem">💡</div>
-        <h5>No suggestions yet</h5>
+        <h5>No approved suggestions yet</h5>
         <p>Be the first to share an idea!</p>
     </div>
 
@@ -91,15 +57,9 @@
     <div class="card mb-3 suggestion-card" ng-repeat="s in suggestions">
         <div class="card-body">
 
-            <!-- Top row: category + status + delete -->
+            <!-- Top row: delete button -->
             <div class="d-flex justify-content-between align-items-start mb-2">
-                <div class="d-flex gap-2 align-items-center">
-                    <span class="cat-badge">{{catIcon(s.category)}} {{s.category}}</span>
-                    <span class="badge" ng-show="s.status && s.status !== 'Open'"
-                        ng-class="s.status==='Accepted' ? 'bg-success' : s.status==='In Progress' ? 'bg-primary' : 'bg-danger'">
-                        {{s.status}}
-                    </span>
-                </div>
+                <span></span>
                 <button class="btn btn-sm btn-outline-danger"
                     ng-if="isSuggestionOwner(s) || currentUser.role === 'admin'"
                     ng-click="deleteSuggestion(s._id)">🗑️</button>
@@ -108,46 +68,36 @@
             <!-- Title + content -->
             <h5 class="fw-semibold mb-1">{{s.title}}</h5>
             <p class="text-muted mb-3" style="font-size:0.92rem;white-space:pre-wrap">{{s.content}}</p>
+
+            <!-- Admin note -->
             <div class="alert alert-light py-1 px-2 small border-start border-3 border-primary mb-3"
                 ng-show="s.adminNote">
                 📝 Admin note: <em>{{s.adminNote}}</em>
             </div>
 
-            <!-- Footer: author + vote + comment toggle -->
+            <!-- Footer: author + comment toggle -->
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div>
-                    <small class="text-muted">
-                        👤 <strong>{{s.userName}}</strong>
-                        <span ng-show="s.branch"> · {{s.branch}}</span>
-                        &nbsp;·&nbsp; 🕐 {{s.createdAt | date:'mediumDate'}}
-                    </small>
-                </div>
-                <div class="d-flex align-items-center gap-3">
-                    <!-- Vote button (toggle) -->
-                    <button class="suggestion-vote-btn" ng-class="{'voted': hasVoted(s)}" ng-click="vote(s)"
-                        title="{{hasVoted(s) ? 'Remove vote' : 'Upvote this suggestion'}}">
-                        👍 <strong>{{s.votes}}</strong>
-                    </button>
-                    <!-- Comment toggle -->
-                    <button class="btn btn-sm btn-link text-decoration-none p-0 text-muted"
-                        ng-click="toggleComments(s._id)">
-                        <span ng-if="!showComments[s._id]">
-                            💬 {{s.commentCount || 0}} Comment(s) ▾
-                        </span>
-                        <span ng-if="showComments[s._id]">▴ Hide</span>
-                    </button>
-                </div>
+                <small class="text-muted">
+                    👤 <strong>{{s.userName}}</strong>
+                    <span ng-show="s.branch"> · {{s.branch}}</span>
+                    &nbsp;·&nbsp; 🕐 {{s.createdAt | date:'mediumDate'}}
+                </small>
+                <button class="btn btn-sm btn-link text-decoration-none p-0 text-muted"
+                    ng-click="toggleComments(s._id)">
+                    <span ng-if="!showComments[s._id]">
+                        💬 {{s.commentCount || 0}} Comment(s) ▾
+                    </span>
+                    <span ng-if="showComments[s._id]">▴ Hide</span>
+                </button>
             </div>
 
             <!-- ── COMMENT SECTION ────────────────────────────────────────────── -->
             <div ng-show="showComments[s._id]" class="mt-3 pt-2" style="border-top:1px solid #eee;">
 
-                <!-- No comments -->
                 <div class="text-muted small py-2" ng-show="comments[s._id] && comments[s._id].length === 0">
                     No comments yet — start the discussion!
                 </div>
 
-                <!-- Comment list -->
                 <div ng-repeat="c in comments[s._id]" class="comment-item" ng-class="{'comment-reply': isReply(c)}">
                     <div class="d-flex align-items-start gap-2">
                         <span class="comment-avatar">{{c.userName.charAt(0).toUpperCase()}}</span>
@@ -170,8 +120,7 @@
                 <div class="comment-input-row mt-3">
                     <div class="reply-indicator" ng-show="replyLabel[s._id]">
                         Replying to <strong>{{replyLabel[s._id]}}</strong>
-                        <button class="btn btn-link btn-sm p-0 ms-2 text-muted" ng-click="clearReply(s._id)">✕
-                            Cancel</button>
+                        <button class="btn btn-link btn-sm p-0 ms-2 text-muted" ng-click="clearReply(s._id)">✕ Cancel</button>
                     </div>
                     <div class="d-flex gap-2 align-items-center mt-1">
                         <span class="comment-avatar self-avatar">
@@ -187,10 +136,10 @@
                     </div>
                 </div>
 
-            </div><!-- end comments -->
+            </div>
 
         </div>
-    </div><!-- end suggestion card -->
+    </div>
 
     <!-- ── PAGINATION ─────────────────────────────────────────────────────────── -->
     <div class="text-center mt-3" ng-show="totalPages > 1">

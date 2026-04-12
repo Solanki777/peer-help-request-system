@@ -86,13 +86,14 @@ router.delete('/users/:id', ...G, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
-// QUESTION MODERATION
+// QUESTION MODERATION  (includes pending approval queue)
 // ══════════════════════════════════════════════════════════════════════════════
 
 router.get('/questions', ...G, async (req, res) => {
     try {
         const filter = {};
         if (req.query.subject) filter.subject = req.query.subject;
+        if (req.query.status) filter.status = req.query.status;   // pending|approved|rejected
         if (req.query.hidden === 'true') filter.isHidden = true;
         if (req.query.hidden === 'false') filter.isHidden = false;
         if (req.query.search) {
@@ -104,7 +105,57 @@ router.get('/questions', ...G, async (req, res) => {
         const skip = (page - 1) * limit;
         const total = await Request.countDocuments(filter);
         const questions = await Request.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit);
-        res.json({ questions, total, totalPages: Math.ceil(total / limit) });
+
+        // Count pending questions for badge
+        const pendingCount = await Request.countDocuments({ status: 'pending' });
+
+        res.json({ questions, total, totalPages: Math.ceil(total / limit), pendingCount });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ── APPROVE / REJECT a question ───────────────────────────────────────────────
+router.put('/questions/:id/approve', ...G, async (req, res) => {
+    try {
+        const q = await Request.findByIdAndUpdate(
+            req.params.id, { status: 'approved' }, { new: true }
+        );
+        if (!q) return res.status(404).json({ message: 'Question not found' });
+
+        // Give reputation to the author
+        await User.findByIdAndUpdate(q.userId, { $inc: { reputation: 2 } });
+
+        // Notify the author
+        const notif = new Notification({
+            userId: q.userId,
+            type: 'question_approved',
+            message: `✅ Your question "${q.title}" has been approved and is now visible to everyone!`,
+            link: `/#!/request/${q._id}`
+        });
+        await notif.save();
+        req.app.get('io').to(q.userId.toString()).emit('notification', notif);
+        req.app.get('io').emit('newRequest', q);
+
+        res.json({ message: 'Question approved', question: q });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+router.put('/questions/:id/reject', ...G, async (req, res) => {
+    try {
+        const q = await Request.findByIdAndUpdate(
+            req.params.id, { status: 'rejected' }, { new: true }
+        );
+        if (!q) return res.status(404).json({ message: 'Question not found' });
+
+        const notif = new Notification({
+            userId: q.userId,
+            type: 'question_rejected',
+            message: `❌ Your question "${q.title}" was not approved by the admin.`,
+            link: '/#!/dashboard'
+        });
+        await notif.save();
+        req.app.get('io').to(q.userId.toString()).emit('notification', notif);
+
+        res.json({ message: 'Question rejected', question: q });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
@@ -116,12 +167,10 @@ router.put('/questions/:id/hide', ...G, async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// BUG FIX: Full cascade delete — answers AND their comments removed when question deleted
 router.delete('/questions/:id', ...G, async (req, res) => {
     try {
         const answers = await Answer.find({ requestId: req.params.id }).select('_id');
         const ids = answers.map(a => a._id);
-        // Delete all comments for all answers (even if ids is empty, this is safe)
         if (ids.length > 0) {
             await Comment.deleteMany({ answerId: { $in: ids } });
         }
@@ -148,7 +197,6 @@ router.put('/answers/:id/hide', ...G, async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// BUG FIX: Also delete comments for this answer when admin deletes it
 router.delete('/answers/:id', ...G, async (req, res) => {
     try {
         const a = await Answer.findById(req.params.id);
@@ -161,14 +209,13 @@ router.delete('/answers/:id', ...G, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
-// SUGGESTION MANAGEMENT
+// SUGGESTION MANAGEMENT  (includes pending approval queue)
 // ══════════════════════════════════════════════════════════════════════════════
 
 router.get('/suggestions', ...G, async (req, res) => {
     try {
         const filter = {};
         if (req.query.status) filter.status = req.query.status;
-        if (req.query.category) filter.category = req.query.category;
         if (req.query.search) {
             const re = new RegExp(req.query.search, 'i');
             filter.$or = [{ title: re }, { content: re }, { userName: re }];
@@ -177,15 +224,64 @@ router.get('/suggestions', ...G, async (req, res) => {
         const limit = parseInt(req.query.limit) || 15;
         const skip = (page - 1) * limit;
         const total = await Suggestion.countDocuments(filter);
-        const suggestions = await Suggestion.find(filter).sort({ votes: -1, createdAt: -1 }).skip(skip).limit(limit);
-        res.json({ suggestions, total, totalPages: Math.ceil(total / limit) });
+        const suggestions = await Suggestion.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit);
+
+        // Count pending suggestions for badge
+        const pendingCount = await Suggestion.countDocuments({ status: 'pending' });
+
+        res.json({ suggestions, total, totalPages: Math.ceil(total / limit), pendingCount });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// ── APPROVE / REJECT a suggestion ────────────────────────────────────────────
+router.put('/suggestions/:id/approve', ...G, async (req, res) => {
+    try {
+        const s = await Suggestion.findByIdAndUpdate(
+            req.params.id, { status: 'approved' }, { new: true }
+        );
+        if (!s) return res.status(404).json({ message: 'Suggestion not found' });
+
+        const notif = new Notification({
+            userId: s.userId,
+            type: 'suggestion_approved',
+            message: `✅ Your suggestion "${s.title}" has been approved and is now visible!`,
+            link: '/#!/suggestions'
+        });
+        await notif.save();
+        req.app.get('io').to(s.userId.toString()).emit('notification', notif);
+
+        res.json({ message: 'Suggestion approved', suggestion: s });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+router.put('/suggestions/:id/reject', ...G, async (req, res) => {
+    try {
+        const { adminNote } = req.body;
+        const s = await Suggestion.findByIdAndUpdate(
+            req.params.id,
+            { status: 'rejected', adminNote: adminNote || '' },
+            { new: true }
+        );
+        if (!s) return res.status(404).json({ message: 'Suggestion not found' });
+
+        const notif = new Notification({
+            userId: s.userId,
+            type: 'suggestion_rejected',
+            message: `❌ Your suggestion "${s.title}" was not approved${adminNote ? ': ' + adminNote : '.'}`,
+            link: '/#!/suggestions'
+        });
+        await notif.save();
+        req.app.get('io').to(s.userId.toString()).emit('notification', notif);
+
+        res.json({ message: 'Suggestion rejected', suggestion: s });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// Keep old status endpoint for backward compat (admin note etc.)
 router.put('/suggestions/:id/status', ...G, async (req, res) => {
     try {
         const { status, adminNote } = req.body;
-        const valid = ['Open', 'Accepted', 'In Progress', 'Rejected'];
+        const valid = ['Open', 'Accepted', 'In Progress', 'Rejected', 'pending', 'approved', 'rejected'];
         if (!valid.includes(status)) return res.status(400).json({ message: 'Invalid status' });
 
         const s = await Suggestion.findByIdAndUpdate(
@@ -194,17 +290,6 @@ router.put('/suggestions/:id/status', ...G, async (req, res) => {
             { new: true }
         );
         if (!s) return res.status(404).json({ message: 'Suggestion not found' });
-
-        const icons = { Accepted: '✅', 'In Progress': '🔧', Rejected: '❌', Open: '📋' };
-        const notif = new Notification({
-            userId: s.userId,
-            type: 'suggestion_status',
-            message: `${icons[status]} Your suggestion "${s.title}" status: ${status}${adminNote ? ' — ' + adminNote : ''}`,
-            link: '/#!/suggestions'
-        });
-        await notif.save();
-        req.app.get('io').to(s.userId.toString()).emit('notification', notif);
-
         res.json({ message: 'Status updated', suggestion: s });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -220,13 +305,15 @@ router.get('/analytics', ...G, async (req, res) => {
         const approvedStudents = await User.countDocuments({ role: 'student', status: 'approved' });
         const rejectedStudents = await User.countDocuments({ role: 'student', status: 'rejected' });
         const totalQuestions = await Request.countDocuments();
+        const pendingQuestions = await Request.countDocuments({ status: 'pending' });
+        const approvedQuestions = await Request.countDocuments({ status: 'approved' });
         const hiddenQuestions = await Request.countDocuments({ isHidden: true });
         const answeredQuestions = await Request.countDocuments({ answersCount: { $gt: 0 } });
         const totalAnswers = await Answer.countDocuments();
         const totalComments = await Comment.countDocuments();
         const totalSuggestions = await Suggestion.countDocuments();
-        const openSuggestions = await Suggestion.countDocuments({ status: 'Open' });
-        const acceptedSuggestions = await Suggestion.countDocuments({ status: 'Accepted' });
+        const pendingSuggestions = await Suggestion.countDocuments({ status: 'pending' });
+        const approvedSuggestions = await Suggestion.countDocuments({ status: 'approved' });
 
         const bySubject = await Request.aggregate([
             { $group: { _id: '$subject', count: { $sum: 1 } } },
@@ -244,10 +331,6 @@ router.get('/analytics', ...G, async (req, res) => {
             .sort({ reputation: -1 })
             .limit(5);
 
-        const suggestionsByStatus = await Suggestion.aggregate([
-            { $group: { _id: '$status', count: { $sum: 1 } } }
-        ]);
-
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const activityByDay = await Request.aggregate([
             { $match: { createdAt: { $gte: sevenDaysAgo } } },
@@ -262,11 +345,11 @@ router.get('/analytics', ...G, async (req, res) => {
 
         res.json({
             users: { total: totalStudents, pending: pendingStudents, approved: approvedStudents, rejected: rejectedStudents },
-            questions: { total: totalQuestions, hidden: hiddenQuestions, answered: answeredQuestions },
+            questions: { total: totalQuestions, pending: pendingQuestions, approved: approvedQuestions, hidden: hiddenQuestions, answered: answeredQuestions },
             answers: { total: totalAnswers },
             comments: { total: totalComments },
-            suggestions: { total: totalSuggestions, open: openSuggestions, accepted: acceptedSuggestions },
-            bySubject, usersByBranch, topUsers, suggestionsByStatus, activityByDay
+            suggestions: { total: totalSuggestions, pending: pendingSuggestions, approved: approvedSuggestions },
+            bySubject, usersByBranch, topUsers, activityByDay
         });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
