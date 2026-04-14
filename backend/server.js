@@ -47,14 +47,9 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: { message: 'Too many login attempts, try again in 15 minutes.' }
-});
+
 // Only apply strict limiter to login & register — NOT leaderboard/profile
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
+
 
 mongoose.connect('mongodb://localhost:27017/peerhelp')
   .then(() => console.log('✅ MongoDB Connected!'))

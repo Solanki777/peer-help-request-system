@@ -173,11 +173,31 @@ body {
   font-size: 0.9rem;
   font-family: 'Plus Jakarta Sans', sans-serif;
   transition: all var(--transition);
-  background: var(--surface);
-  color: var(--text);
+  background: #ffffff;
+  color: #0f172a;
 }
 
-.form-control:focus,
+.form-control::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+.form-select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+body.dark-mode .form-control::placeholder {
+  color: #6c7086;
+  opacity: 1;
+}
+
+body.dark-mode .form-select option {
+  background: #313244;
+  color: #cdd6f4;
+}
+
+.fo.formrm-control:focus,
 .form-select:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);

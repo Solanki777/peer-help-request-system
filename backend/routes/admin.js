@@ -81,13 +81,25 @@ router.put('/users/:id', ...G, async (req, res) => {
         res.json({ message: 'User updated successfully', user });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
-
-router.delete('/users/:id', ...G, async (req, res) => {
+router.delete('/questions/:id', ...G, async (req, res) => {
     try {
-        const user = await User.findById(req.params.id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        await User.findByIdAndDelete(req.params.id);
-        res.json({ message: 'User deleted permanently' });
+        const deleted = await Request.findById(req.params.id);
+        if (!deleted) return res.status(404).json({ message: 'Question not found' });
+
+        // Find all answers for this question
+        const answers = await Answer.find({ requestId: req.params.id }).select('_id');
+        const ids = answers.map(a => a._id);
+
+        // Cascade: delete all comments on those answers
+        if (ids.length > 0) {
+            await Comment.deleteMany({ answerId: { $in: ids } });
+            await Answer.deleteMany({ requestId: req.params.id });
+        }
+
+        // Finally delete the question itself
+        await Request.findByIdAndDelete(req.params.id);
+
+        res.json({ message: `Question and ${ids.length} answer(s) with all comments deleted successfully` });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 

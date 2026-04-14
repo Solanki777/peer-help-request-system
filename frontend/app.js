@@ -10,7 +10,12 @@ app.config(function ($routeProvider, $locationProvider) {
     .when('/register', { templateUrl: 'views/register.html', controller: 'AuthCtrl' })
     .when('/dashboard', { templateUrl: 'views/dashboard.html', controller: 'DashboardCtrl' })
     .when('/request/:id', { templateUrl: 'views/request.html', controller: 'RequestCtrl' })
-    .when('/profile', { templateUrl: 'views/profile.html', controller: 'ProfileCtrl' })
+    .when('/profile', { templateUrl: 'views/profile.html', controller: 'ProfileCtrl', resolve: {
+      guard: ['AuthService', '$location', function(AuthService, $location) {
+        var u = AuthService.getUser();
+        if (u && u.role === 'admin') $location.path('/admin');
+      }]
+    } })
     .when('/suggestions', { templateUrl: 'views/suggestions.html', controller: 'SuggestionCtrl' })
     .when('/admin', { templateUrl: 'views/admin.html', controller: 'AdminCtrl' })
     .otherwise({ redirectTo: '/login' });
@@ -90,7 +95,19 @@ app.controller('NavCtrl', function ($scope, $location, $http, AuthService, Socke
 
 // ── AUTH CONTROLLER ───────────────────────────────────────────────────────────
 app.controller('AuthCtrl', function ($scope, $http, $location, AuthService) {
-  if (AuthService.isLoggedIn()) $location.path('/dashboard');
+  // On register page, always clear any stale session so
+  // "Back to Login" lands on a clean login form
+  if ($location.path() === '/register') {
+    AuthService.logout();
+  }
+
+  // If already logged in (on login page), redirect to correct home
+  if (AuthService.isLoggedIn()) {
+    var u = AuthService.getUser();
+    $location.path(u && u.role === 'admin' ? '/admin' : '/dashboard');
+    return;
+  }
+
   $scope.user = {};
   $scope.message = '';
   $scope.loading = false;
@@ -728,6 +745,7 @@ app.controller('AdminCtrl', function ($scope, $http, $location, AuthService) {
     $scope.activeTab = tab;
     $scope.message = '';
     if (tab === 'users') $scope.loadUsers();
+    if (tab === 'students') $scope.loadStudents();
     if (tab === 'questions') $scope.loadQuestions();
     if (tab === 'suggestions') $scope.loadAdminSuggestions();
     if (tab === 'analytics') $scope.loadAnalytics();
@@ -806,13 +824,75 @@ app.controller('AdminCtrl', function ($scope, $http, $location, AuthService) {
   };
 
   // ══════════════════════════════════════════════════════════════════════════
+  // STUDENTS — view & edit all student profiles
+  // ══════════════════════════════════════════════════════════════════════════
+  $scope.allStudents = [];
+  $scope.studentFilter = { search: '', branch: '', semester: '' };
+  $scope.editingStudent = null;
+  $scope.studentEditMsg = '';
+
+  $scope.loadStudents = function () {
+    var url = API + '/admin/users?status=all&role=student';
+    if ($scope.studentFilter.search) url += '&search=' + encodeURIComponent($scope.studentFilter.search);
+    if ($scope.studentFilter.branch) url += '&branch=' + $scope.studentFilter.branch;
+    if ($scope.studentFilter.semester) url += '&semester=' + $scope.studentFilter.semester;
+    $http.get(url, H()).then(function (res) {
+      // filter out admin accounts, keep only students
+      $scope.allStudents = (res.data.users || []).filter(function (u) { return u.role !== 'admin'; });
+    });
+  };
+
+  $scope.startStudentEdit = function (student) {
+    $scope.studentEditMsg = '';
+    $scope.editingStudent = {
+      _id: student._id,
+      name: student.name,
+      enrollment: student.enrollment || '',
+      contact: student.contact || '',
+      dob: student.dob ? student.dob.split('T')[0] : '',
+      department: student.department || '',
+      branch: student.branch || '',
+      semester: student.semester ? String(student.semester) : '',
+      city: student.city || '',
+      bio: student.bio || '',
+      interests: student.interests || '',
+      skills: (student.skills || []).join(', '),
+      status: student.status,
+      reputation: student.reputation || 0
+    };
+    // Scroll to edit panel
+    setTimeout(function () {
+      var el = document.querySelector('.border-primary.shadow-sm');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
+
+  $scope.cancelStudentEdit = function () {
+    $scope.editingStudent = null;
+    $scope.studentEditMsg = '';
+  };
+
+  $scope.saveStudentEdit = function () {
+    $scope.studentEditMsg = '';
+    $http.put(API + '/admin/users/' + $scope.editingStudent._id, $scope.editingStudent, H())
+      .then(function () {
+        $scope.studentEditMsg = '✅ Profile saved successfully!';
+        $scope.loadStudents();
+        // Auto close after 2 seconds
+        setTimeout(function () { $scope.$apply(function () { $scope.editingStudent = null; $scope.studentEditMsg = ''; }); }, 2000);
+      }).catch(function (err) {
+        $scope.studentEditMsg = '❌ ' + (err.data ? err.data.message : 'Error saving');
+      });
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
   // QUESTIONS / ANSWERS
   // ══════════════════════════════════════════════════════════════════════════
   $scope.questions = [];
   $scope.qPage = 1;
   $scope.qTotalPages = 1;
   $scope.qFilter = { search: '', subject: '', status: 'pending', hidden: '' };
-  $scope.expandedQ = null;
+  $scope.expandedPreview = {};
   $scope.qAnswers = {};
 
   $scope.loadQuestions = function () {

@@ -54,7 +54,7 @@
         <span class="badge bg-danger" ng-show="getUser().role === 'admin'">ADMIN</span>
         <a href="#!/suggestions" class="btn btn-sm btn-outline-light">💡 Suggestions</a>
         <a href="#!/admin" class="btn btn-sm btn-danger" ng-show="getUser().role === 'admin'">🛡️ Admin</a>
-        <a href="#!/profile" class="btn btn-sm btn-outline-light">👤 Profile</a>
+        <a href="#!/profile" class="btn btn-sm btn-outline-light" ng-show="getUser().role !== 'admin'">👤 Profile</a>
         <button class="btn btn-sm btn-outline-light" ng-click="logout()">Logout</button>
       </div>
     </div>
