@@ -74,25 +74,32 @@ function broadcastOnlineCount() {
 }
 
 io.on('connection', (socket) => {
-  console.log('🔌 User connected:', socket.id);
 
   socket.on('join', (userId) => {
-    socket.join(userId);
     socket.userId = userId;
-    onlineUsers.set(userId, socket.id);
-    console.log('👤 User joined room:', userId, '| Online:', onlineUsers.size);
+
+    if (!onlineUsers.has(userId)) {
+      onlineUsers.set(userId, new Set());
+    }
+
+    onlineUsers.get(userId).add(socket.id);
+
     broadcastOnlineCount();
   });
 
   socket.on('disconnect', () => {
-    if (socket.userId) {
-      onlineUsers.delete(socket.userId);
-      console.log('❌ User disconnected:', socket.id, '| Online:', onlineUsers.size);
+    const userId = socket.userId;
+
+    if (userId && onlineUsers.has(userId)) {
+      const userSockets = onlineUsers.get(userId);
+      userSockets.delete(socket.id);
+
+      // Remove user only if no active sockets left
+      if (userSockets.size === 0) {
+        onlineUsers.delete(userId);
+      }
+
       broadcastOnlineCount();
     }
   });
-});
-
-server.listen(3000, () => {
-  console.log('🚀 Server running on http://localhost:3000');
 });
