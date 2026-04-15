@@ -7,7 +7,7 @@ const { User, Answer, Request } = require('../models');
 const SECRET = process.env.JWT_SECRET || 'SECRET_KEY_GTU_2024';
 
 function authMiddleware(req, res, next) {
-  const token = req.headers['authorization'];
+  const token = req.headers['authorization'] || req.cookies.token;
   if (!token) return res.status(401).json({ message: 'No token' });
   try { req.user = jwt.verify(token, SECRET); next(); }
   catch { res.status(401).json({ message: 'Invalid token' }); }
@@ -118,6 +118,13 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    res.cookie('token', token, {
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
+
     res.json({
       token,
       user: {
@@ -131,6 +138,21 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
+});
+
+// ── LOGOUT (Clears session cookie) ───────────────────────────────────────────
+router.post('/logout', (req, res) => {
+  res.clearCookie('token');
+  res.json({ message: 'Logged out successfully' });
+});
+
+// ── GET ME (Checks session status) ───────────────────────────────────────────
+router.get('/me', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 // ── GET PROFILE ───────────────────────────────────────────────────────────────

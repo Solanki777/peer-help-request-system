@@ -6,6 +6,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 
 // ── INLINE NOSQL SANITIZER ────────────────────────────────────────────────────
 // Replaces express-mongo-sanitize which has a version conflict with Express 5.
@@ -37,6 +38,7 @@ app.set('io', io);
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use(bodyParser.json());
+app.use(cookieParser());
 app.use(mongoSanitize);         // runs AFTER body is parsed — strips $keys and .keys
 app.use(express.static('../frontend'));
 
@@ -64,14 +66,30 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/stats', require('./routes/stats'));
 
+// Track online users: userId → socket.id
+const onlineUsers = new Map();
+
+function broadcastOnlineCount() {
+  io.emit('onlineCount', { count: onlineUsers.size });
+}
+
 io.on('connection', (socket) => {
   console.log('🔌 User connected:', socket.id);
+
   socket.on('join', (userId) => {
     socket.join(userId);
-    console.log('👤 User joined room:', userId);
+    socket.userId = userId;
+    onlineUsers.set(userId, socket.id);
+    console.log('👤 User joined room:', userId, '| Online:', onlineUsers.size);
+    broadcastOnlineCount();
   });
+
   socket.on('disconnect', () => {
-    console.log('❌ User disconnected:', socket.id);
+    if (socket.userId) {
+      onlineUsers.delete(socket.userId);
+      console.log('❌ User disconnected:', socket.id, '| Online:', onlineUsers.size);
+      broadcastOnlineCount();
+    }
   });
 });
 
