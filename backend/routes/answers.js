@@ -5,14 +5,7 @@ const jwt = require('jsonwebtoken');
 const { Answer, Request, User, Notification, Comment } = require('../models');
 const SECRET = process.env.JWT_SECRET || 'SECRET_KEY_GTU_2024';
 
-function authMiddleware(req, res, next) {
-  const token = req.headers['authorization'];
-  if (!token) return res.status(401).json({ message: 'No token' });
-  try {
-    req.user = jwt.verify(token, SECRET);
-    next();
-  } catch { res.status(401).json({ message: 'Invalid token' }); }
-}
+const authMiddleware = require('../middleware/auth');
 
 // GET answers for a request
 router.get('/:requestId', async (req, res) => {

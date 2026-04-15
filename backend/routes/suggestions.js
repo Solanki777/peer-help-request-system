@@ -6,12 +6,7 @@ const { Suggestion, SuggestionComment } = require('../models');
 
 const SECRET = 'SECRET_KEY_GTU_2024';
 
-function auth(req, res, next) {
-    const token = req.headers['authorization'];
-    if (!token) return res.status(401).json({ message: 'No token' });
-    try { req.user = jwt.verify(token, SECRET); next(); }
-    catch { res.status(401).json({ message: 'Invalid token' }); }
-}
+const auth = require('../middleware/auth');
 
 // ── GET ALL SUGGESTIONS (only approved ones for students) ────────────────────
 router.get('/', async (req, res) => {

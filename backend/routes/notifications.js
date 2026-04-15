@@ -9,12 +9,7 @@ const SECRET = 'SECRET_KEY_GTU_2024';
 
 module.exports.Notification = Notification; // keep for cross-route imports
 
-function authMiddleware(req, res, next) {
-  const token = req.headers['authorization'];
-  if (!token) return res.status(401).json({ message: 'No token' });
-  try { req.user = jwt.verify(token, SECRET); next(); }
-  catch { res.status(401).json({ message: 'Invalid token' }); }
-}
+const authMiddleware = require('../middleware/auth');
 
 router.get('/my', authMiddleware, async (req, res) => {
   try {

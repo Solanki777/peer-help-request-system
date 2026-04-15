@@ -6,12 +6,7 @@ const { Comment, Answer, Notification } = require('../models');
 
 const SECRET = 'SECRET_KEY_GTU_2024';
 
-function authMiddleware(req, res, next) {
-  const token = req.headers['authorization'];
-  if (!token) return res.status(401).json({ message: 'No token' });
-  try { req.user = jwt.verify(token, SECRET); next(); }
-  catch { res.status(401).json({ message: 'Invalid token' }); }
-}
+const authMiddleware = require('../middleware/auth');
 
 // GET all comments for an answer (flat list, sorted oldest first)
 router.get('/:answerId', async (req, res) => {

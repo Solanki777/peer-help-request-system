@@ -6,12 +6,7 @@ const jwt = require('jsonwebtoken');
 const { User, Answer, Request } = require('../models');
 const SECRET = process.env.JWT_SECRET || 'SECRET_KEY_GTU_2024';
 
-function authMiddleware(req, res, next) {
-  const token = req.headers['authorization'] || req.cookies.token;
-  if (!token) return res.status(401).json({ message: 'No token' });
-  try { req.user = jwt.verify(token, SECRET); next(); }
-  catch { res.status(401).json({ message: 'Invalid token' }); }
-}
+const authMiddleware = require('../middleware/auth');
 
 // Password strength: min 8 chars, at least 1 uppercase, 1 number, 1 special char
 function isStrongPassword(pw) {
