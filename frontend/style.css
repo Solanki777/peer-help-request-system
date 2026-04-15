@@ -1242,3 +1242,19 @@ body.dark-mode .btn-xs.btn-secondary {
     font-size: 1.6rem;
   }
 }
+/* ── LIVE ONLINE DOT ─────────────────────────────────────────────────────────── */
+.live-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: pulse-green 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse-green {
+  0%   { box-shadow: 0 0 0 0 rgba(16,185,129,0.7); }
+  70%  { box-shadow: 0 0 0 8px rgba(16,185,129,0); }
+  100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+}

@@ -1,30 +1,14 @@
 <div class="container-fluid px-3 px-md-4 py-3">
 
-    <!-- ── STATS ROW ─────────────────────────────────────────────────────────── -->
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-            <div class="stat-card blue">
-                <div class="stat-number">{{stats.totalQuestions || 0}}</div>
-                <div class="stat-label">📋 Total Questions</div>
+    <!-- ── LIVE STUDENTS ONLINE ──────────────────────────────────────────────── -->
+    <div class="d-flex justify-content-center mb-4">
+        <div class="card text-center px-5 py-3 shadow-sm" style="border-radius:16px;border-left:5px solid #10b981;min-width:260px">
+            <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                <span class="live-dot"></span>
+                <span class="text-muted fw-semibold" style="font-size:0.82rem;letter-spacing:.5px">STUDENTS ONLINE NOW</span>
             </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card green">
-                <div class="stat-number">{{stats.answeredQuestions || 0}}</div>
-                <div class="stat-label">✅ Answered</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card orange">
-                <div class="stat-number" style="font-size:1.3rem">{{stats.popularSubject || 'N/A'}}</div>
-                <div class="stat-label">🔥 Top Subject</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card purple">
-                <div class="stat-number">{{stats.totalUsers || 0}}</div>
-                <div class="stat-label">👥 Students</div>
-            </div>
+            <div class="fw-bold" style="font-size:3rem;color:#10b981;line-height:1.1">{{liveStudents}}</div>
+            <small class="text-muted mt-1">approved &amp; active right now</small>
         </div>
     </div>
 

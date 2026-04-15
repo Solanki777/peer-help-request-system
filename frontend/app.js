@@ -22,7 +22,7 @@ app.config(function ($routeProvider, $locationProvider) {
 });
 
 // ── AUTH SERVICE ──────────────────────────────────────────────────────────────
-app.service('AuthService', function () {
+app.service('AuthService', function ($http) {
   this.saveUser = function (token, user) {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
@@ -30,7 +30,11 @@ app.service('AuthService', function () {
   this.getToken = function () { return localStorage.getItem('token'); };
   this.getUser = function () { return JSON.parse(localStorage.getItem('user') || 'null'); };
   this.isLoggedIn = function () { return !!localStorage.getItem('token'); };
-  this.logout = function () { localStorage.removeItem('token'); localStorage.removeItem('user'); };
+  this.logout = function () {
+    $http.post(API + '/auth/logout', {});
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  };
 });
 
 // ── SOCKET SERVICE ────────────────────────────────────────────────────────────
@@ -208,13 +212,16 @@ app.controller('DashboardCtrl', function ($scope, $http, $location, AuthService,
   // 'newest' | 'most_answered' | 'unanswered'
   $scope.sortBy = 'newest';
 
+  $scope.liveStudents = 0;
+
   function authHeaders() {
     return { headers: { Authorization: AuthService.getToken() } };
   }
 
-  $scope.loadStats = function () {
-    $http.get(API + '/stats').then(function (res) { $scope.stats = res.data; });
-  };
+  // Listen for live student count updates
+  SocketService.socket.on('onlineCount', function (data) {
+    $scope.$apply(function () { $scope.liveStudents = data.count; });
+  });
 
   $scope.loadLeaderboard = function () {
     $http.get(API + '/auth/leaderboard').then(function (res) { $scope.leaderboard = res.data; });
@@ -308,7 +315,6 @@ app.controller('DashboardCtrl', function ($scope, $http, $location, AuthService,
         $scope.newRequest = {};
         $scope.showForm = false;
         $scope.loadRequests();
-        $scope.loadStats();
       })
       .catch(function (err) {
         $scope.message = '❌ ' + (err.data ? err.data.message : 'Error');
@@ -335,7 +341,6 @@ app.controller('DashboardCtrl', function ($scope, $http, $location, AuthService,
   });
 
   $scope.loadRequests();
-  $scope.loadStats();
   $scope.loadLeaderboard();
 });
 
