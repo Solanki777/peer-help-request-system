@@ -1,9 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
-
 const { Request, User, Answer, Comment } = require('../models');
-const SECRET = process.env.JWT_SECRET || 'SECRET_KEY_GTU_2024';
 
 const authMiddleware = require('../middleware/auth');
 

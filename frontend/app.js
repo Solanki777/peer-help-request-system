@@ -3,7 +3,7 @@ var app = angular.module('peerHelpApp', ['ngRoute']);
 var API = 'http://localhost:3000/api';
 
 // ── ROUTING ───────────────────────────────────────────────────────────────────
-app.config(function ($routeProvider, $locationProvider) {
+app.config(function ($routeProvider, $locationProvider, $httpProvider) {
   $locationProvider.hashPrefix('!');
   $routeProvider
     .when('/login', { templateUrl: 'views/login.html', controller: 'AuthCtrl' })
@@ -19,6 +19,8 @@ app.config(function ($routeProvider, $locationProvider) {
     .when('/suggestions', { templateUrl: 'views/suggestions.html', controller: 'SuggestionCtrl' })
     .when('/admin', { templateUrl: 'views/admin.html', controller: 'AdminCtrl' })
     .otherwise({ redirectTo: '/login' });
+
+  $httpProvider.interceptors.push('AuthInterceptor');
 });
 
 // ── AUTH SERVICE ──────────────────────────────────────────────────────────────
@@ -34,6 +36,30 @@ app.service('AuthService', function ($http) {
     $http.post(API + '/auth/logout', {});
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+  };
+});
+
+// ── AUTH INTERCEPTOR ──────────────────────────────────────────────────────────
+app.factory('AuthInterceptor', function ($q, $location) {
+  return {
+    request: function (config) {
+      config.headers = config.headers || {};
+      var token = localStorage.getItem('token');
+      // Only add to API calls starting with our API base URL
+      if (token && config.url.indexOf(API) === 0) {
+        config.headers.Authorization = 'Bearer ' + token;
+      }
+      return config;
+    },
+    responseError: function (rejection) {
+      // If backend returns 401, token might be expired/revoked
+      if (rejection.status === 401 && $location.path() !== '/login') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        $location.path('/login');
+      }
+      return $q.reject(rejection);
+    }
   };
 });
 
@@ -67,14 +93,14 @@ app.controller('NavCtrl', function ($scope, $location, $http, AuthService, Socke
 
   $scope.loadNotifications = function () {
     if (!AuthService.isLoggedIn()) return;
-    $http.get(API + '/notifications/my', { headers: { Authorization: AuthService.getToken() } })
+    $http.get(API + '/notifications/my')
       .then(function (res) { $scope.notifications = res.data; });
-    $http.get(API + '/notifications/unread-count', { headers: { Authorization: AuthService.getToken() } })
+    $http.get(API + '/notifications/unread-count')
       .then(function (res) { $scope.unreadCount = res.data.count; });
   };
 
   $scope.markAllRead = function () {
-    $http.put(API + '/notifications/read-all', {}, { headers: { Authorization: AuthService.getToken() } })
+    $http.put(API + '/notifications/read-all', {})
       .then(function () { $scope.unreadCount = 0; $scope.loadNotifications(); });
   };
 
@@ -214,9 +240,6 @@ app.controller('DashboardCtrl', function ($scope, $http, $location, AuthService,
 
   $scope.liveStudents = 0;
 
-  function authHeaders() {
-    return { headers: { Authorization: AuthService.getToken() } };
-  }
 
   // Listen for live student count updates
   SocketService.socket.on('onlineCount', function (data) {
@@ -309,7 +332,7 @@ app.controller('DashboardCtrl', function ($scope, $http, $location, AuthService,
       tags: $scope.newRequest.tags || ''
     };
 
-    $http.post(API + '/requests', payload, authHeaders())
+    $http.post(API + '/requests', payload)
       .then(function () {
         $scope.message = '✅ Request posted!';
         $scope.newRequest = {};
@@ -323,7 +346,7 @@ app.controller('DashboardCtrl', function ($scope, $http, $location, AuthService,
 
   $scope.deleteRequest = function (id) {
     if (!confirm('Delete this request?')) return;
-    $http.delete(API + '/requests/' + id, authHeaders())
+    $http.delete(API + '/requests/' + id)
       .then(function () { $scope.loadRequests(); });
   };
 
@@ -379,10 +402,7 @@ app.controller('RequestCtrl', function ($scope, $http, $location, $routeParams, 
     return vote ? vote.vote : null;
   };
 
-  function authHeaders() {
-    return { headers: { Authorization: AuthService.getToken() } };
-  }
-
+ 
   $scope.loadRequest = function () {
     $http.get(API + '/requests/' + requestId)
       .then(function (res) { $scope.request = res.data; });
@@ -401,8 +421,7 @@ app.controller('RequestCtrl', function ($scope, $http, $location, $routeParams, 
   };
 
   $scope.postAnswer = function () {
-    // FIX: Only send content — userId/userName come from token on the backend
-    $http.post(API + '/answers/' + requestId, { content: $scope.newAnswer.content }, authHeaders())
+    $http.post(API + '/answers/' + requestId, { content: $scope.newAnswer.content })
       .then(function () {
         $scope.newAnswer = { content: '' };
         $scope.message = '✅ Answer posted!';
@@ -414,12 +433,12 @@ app.controller('RequestCtrl', function ($scope, $http, $location, $routeParams, 
   };
 
   $scope.vote = function (answerId, type) {
-    $http.put(API + '/answers/' + answerId + '/vote', { type: type }, authHeaders())
+    $http.put(API + '/answers/' + answerId + '/vote', { type: type })
       .then(function () { $scope.loadAnswers(); });
   };
 
   $scope.markBest = function (answerId) {
-    $http.put(API + '/answers/' + answerId + '/best', {}, authHeaders())
+    $http.put(API + '/answers/' + answerId + '/best', {})
       .then(function () {
         $scope.message = '⭐ Best answer marked!';
         $scope.loadAnswers();
@@ -428,7 +447,7 @@ app.controller('RequestCtrl', function ($scope, $http, $location, $routeParams, 
 
   $scope.deleteAnswer = function (answerId) {
     if (!confirm('Delete your answer?')) return;
-    $http.delete(API + '/answers/' + answerId, authHeaders())
+    $http.delete(API + '/answers/' + answerId)
       .then(function () {
         $scope.message = '🗑️ Deleted!';
         $scope.loadAnswers();
@@ -458,7 +477,7 @@ app.controller('RequestCtrl', function ($scope, $http, $location, $routeParams, 
     var text = $scope.newComment[answerId];
     if (!text || !text.trim()) return;
     var payload = { content: text.trim(), parentId: $scope.replyTo[answerId] || null };
-    $http.post(API + '/comments/' + answerId, payload, authHeaders())
+    $http.post(API + '/comments/' + answerId, payload)
       .then(function () {
         $scope.newComment[answerId] = '';
         $scope.replyTo[answerId] = null;
@@ -481,7 +500,7 @@ app.controller('RequestCtrl', function ($scope, $http, $location, $routeParams, 
 
   $scope.deleteComment = function (answerId, commentId) {
     if (!confirm('Delete this comment?')) return;
-    $http.delete(API + '/comments/' + commentId, authHeaders())
+    $http.delete(API + '/comments/' + commentId)
       .then(function () { $scope.loadComments(answerId); });
   };
 
@@ -541,13 +560,10 @@ app.controller('ProfileCtrl', function ($scope, $http, $location, AuthService) {
     $location.path('/request/' + requestId);
   };
 
-  function authHeaders() {
-    return { headers: { Authorization: AuthService.getToken() } };
-  }
-
+ 
   $scope.saveProfile = function () {
     $scope.editMessage = '';
-    $http.put(API + '/auth/profile/' + $scope.currentUser.id, $scope.editData, authHeaders())
+    $http.put(API + '/auth/profile/' + $scope.currentUser.id, $scope.editData)
       .then(function (res) {
         $scope.editMessage = '✅ Profile updated!';
         $scope.profileData = res.data.user;
@@ -622,28 +638,11 @@ app.controller('SuggestionCtrl', function ($scope, $http, $location, AuthService
   $scope.replyTo = {};
   $scope.replyLabel = {};
 
-  function authHeaders() { return { headers: { Authorization: AuthService.getToken() } }; }
-
-  // ── LOAD SUGGESTIONS (only approved ones come from API) ────────────────────
-  $scope.loadSuggestions = function () {
-    var url = API + '/suggestions?page=' + $scope.currentPage + '&limit=10';
-    $http.get(url).then(function (res) {
-      $scope.suggestions = res.data.suggestions;
-      $scope.totalPages = res.data.totalPages;
-    });
-  };
-
-  $scope.getPages = function () {
-    var p = [];
-    for (var i = 1; i <= $scope.totalPages; i++) p.push(i);
-    return p;
-  };
-  $scope.goToPage = function (p) { $scope.currentPage = p; $scope.loadSuggestions(); };
-
+ 
   // ── POST SUGGESTION — will be pending until admin approves ────────────────
   $scope.postSuggestion = function () {
     $scope.loading = true;
-    $http.post(API + '/suggestions', $scope.newSuggestion, authHeaders())
+    $http.post(API + '/suggestions', $scope.newSuggestion)
       .then(function (res) {
         $scope.message = res.data.message || '✅ Suggestion submitted for approval!';
         $scope.newSuggestion = {};
@@ -659,7 +658,7 @@ app.controller('SuggestionCtrl', function ($scope, $http, $location, AuthService
   // ── DELETE SUGGESTION ─────────────────────────────────────────────────────
   $scope.deleteSuggestion = function (id) {
     if (!confirm('Delete this suggestion?')) return;
-    $http.delete(API + '/suggestions/' + id, authHeaders())
+    $http.delete(API + '/suggestions/' + id)
       .then(function () { $scope.loadSuggestions(); });
   };
 
@@ -682,7 +681,7 @@ app.controller('SuggestionCtrl', function ($scope, $http, $location, AuthService
     var text = $scope.newComment[sid];
     if (!text || !text.trim()) return;
     var payload = { content: text.trim(), parentId: $scope.replyTo[sid] || null };
-    $http.post(API + '/suggestions/' + sid + '/comments', payload, authHeaders())
+    $http.post(API + '/suggestions/' + sid + '/comments', payload)
       .then(function () {
         $scope.newComment[sid] = '';
         $scope.replyTo[sid] = null;
@@ -705,7 +704,7 @@ app.controller('SuggestionCtrl', function ($scope, $http, $location, AuthService
 
   $scope.deleteComment = function (sid, cid) {
     if (!confirm('Delete comment?')) return;
-    $http.delete(API + '/suggestions/comments/' + cid, authHeaders())
+    $http.delete(API + '/suggestions/comments/' + cid)
       .then(function () { $scope.loadComments(sid); });
   };
 
@@ -742,8 +741,6 @@ app.controller('AdminCtrl', function ($scope, $http, $location, AuthService) {
   $scope.activeTab = 'users';   // users | questions | suggestions | analytics
   $scope.message = '';
 
-  function authHeaders() { return { headers: { Authorization: AuthService.getToken() } }; }
-  function H() { return authHeaders(); }
 
   // ── TAB NAVIGATION ──────────────────────────────────────────────────────────
   $scope.setTab = function (tab) {
@@ -773,26 +770,26 @@ app.controller('AdminCtrl', function ($scope, $http, $location, AuthService) {
     var url = API + '/admin/users?status=' + ($scope.userFilter.status || 'all');
     if ($scope.userFilter.search) url += '&search=' + encodeURIComponent($scope.userFilter.search);
     if ($scope.userFilter.branch) url += '&branch=' + $scope.userFilter.branch;
-    $http.get(url, H()).then(function (res) {
+    $http.get(url).then(function (res) {
       $scope.users = res.data.users;
       $scope.counts = res.data.counts;
     });
   };
 
   $scope.approveUser = function (user) {
-    $http.put(API + '/admin/users/' + user._id, { status: 'approved' }, H())
+    $http.put(API + '/admin/users/' + user._id, { status: 'approved' })
       .then(function () { $scope.message = '✅ ' + user.name + ' approved!'; $scope.loadUsers(); });
   };
 
   $scope.rejectUser = function (user) {
     if (!confirm('Reject ' + user.name + '?')) return;
-    $http.put(API + '/admin/users/' + user._id, { status: 'rejected' }, H())
+    $http.put(API + '/admin/users/' + user._id, { status: 'rejected' })
       .then(function () { $scope.message = '❌ ' + user.name + ' rejected.'; $scope.loadUsers(); });
   };
 
   $scope.deleteUser = function (user) {
     if (!confirm('Permanently delete ' + user.name + '? This cannot be undone.')) return;
-    $http.delete(API + '/admin/users/' + user._id, H())
+    $http.delete(API + '/admin/users/' + user._id)
       .then(function () { $scope.message = '🗑️ User deleted.'; $scope.loadUsers(); });
   };
 
@@ -818,7 +815,7 @@ app.controller('AdminCtrl', function ($scope, $http, $location, AuthService) {
   $scope.cancelEdit = function () { $scope.editingUser = null; };
 
   $scope.saveUser = function () {
-    $http.put(API + '/admin/users/' + $scope.editingUser._id, $scope.editingUser, H())
+    $http.put(API + '/admin/users/' + $scope.editingUser._id, $scope.editingUser)
       .then(function () {
         $scope.message = '✅ User saved!';
         $scope.editingUser = null;
@@ -841,7 +838,7 @@ app.controller('AdminCtrl', function ($scope, $http, $location, AuthService) {
     if ($scope.studentFilter.search) url += '&search=' + encodeURIComponent($scope.studentFilter.search);
     if ($scope.studentFilter.branch) url += '&branch=' + $scope.studentFilter.branch;
     if ($scope.studentFilter.semester) url += '&semester=' + $scope.studentFilter.semester;
-    $http.get(url, H()).then(function (res) {
+    $http.get(url).then(function (res) {
       // filter out admin accounts, keep only students
       $scope.allStudents = (res.data.users || []).filter(function (u) { return u.role !== 'admin'; });
     });
@@ -879,7 +876,7 @@ app.controller('AdminCtrl', function ($scope, $http, $location, AuthService) {
 
   $scope.saveStudentEdit = function () {
     $scope.studentEditMsg = '';
-    $http.put(API + '/admin/users/' + $scope.editingStudent._id, $scope.editingStudent, H())
+    $http.put(API + '/admin/users/' + $scope.editingStudent._id, $scope.editingStudent)
       .then(function () {
         $scope.studentEditMsg = '✅ Profile saved successfully!';
         $scope.loadStudents();
@@ -906,7 +903,7 @@ app.controller('AdminCtrl', function ($scope, $http, $location, AuthService) {
     if ($scope.qFilter.subject) url += '&subject=' + $scope.qFilter.subject;
     if ($scope.qFilter.status) url += '&status=' + $scope.qFilter.status;
     if ($scope.qFilter.hidden !== '') url += '&hidden=' + $scope.qFilter.hidden;
-    $http.get(url, H()).then(function (res) {
+    $http.get(url).then(function (res) {
       $scope.questions = res.data.questions;
       $scope.qTotalPages = res.data.totalPages;
       $scope.qPendingCount = res.data.pendingCount || 0;
@@ -914,43 +911,43 @@ app.controller('AdminCtrl', function ($scope, $http, $location, AuthService) {
   };
 
   $scope.approveQuestion = function (q) {
-    $http.put(API + '/admin/questions/' + q._id + '/approve', {}, H())
+    $http.put(API + '/admin/questions/' + q._id + '/approve', {})
       .then(function () { $scope.message = '✅ Question approved!'; $scope.loadQuestions(); });
   };
 
   $scope.rejectQuestion = function (q) {
     if (!confirm('Reject this question?')) return;
-    $http.put(API + '/admin/questions/' + q._id + '/reject', {}, H())
+    $http.put(API + '/admin/questions/' + q._id + '/reject', {})
       .then(function () { $scope.message = '❌ Question rejected.'; $scope.loadQuestions(); });
   };
 
   $scope.toggleHideQ = function (q) {
-    $http.put(API + '/admin/questions/' + q._id + '/hide', { hide: !q.isHidden }, H())
+    $http.put(API + '/admin/questions/' + q._id + '/hide', { hide: !q.isHidden })
       .then(function () { q.isHidden = !q.isHidden; $scope.message = q.isHidden ? '🙈 Question hidden' : '👁️ Question visible'; });
   };
 
   $scope.deleteQ = function (q) {
     if (!confirm('Permanently delete this question?')) return;
-    $http.delete(API + '/admin/questions/' + q._id, H())
+    $http.delete(API + '/admin/questions/' + q._id)
       .then(function () { $scope.message = '🗑️ Deleted'; $scope.loadQuestions(); });
   };
 
   $scope.expandQ = function (q) {
     $scope.expandedQ = ($scope.expandedQ === q._id) ? null : q._id;
     if ($scope.expandedQ && !$scope.qAnswers[q._id]) {
-      $http.get(API + '/admin/questions/' + q._id + '/answers', H())
+      $http.get(API + '/admin/questions/' + q._id + '/answers')
         .then(function (res) { $scope.qAnswers[q._id] = res.data; });
     }
   };
 
   $scope.toggleHideA = function (qId, a) {
-    $http.put(API + '/admin/answers/' + a._id + '/hide', { hide: !a.isHidden }, H())
+    $http.put(API + '/admin/answers/' + a._id + '/hide', { hide: !a.isHidden })
       .then(function () { a.isHidden = !a.isHidden; });
   };
 
   $scope.deleteA = function (qId, a) {
     if (!confirm('Delete this answer?')) return;
-    $http.delete(API + '/admin/answers/' + a._id, H())
+    $http.delete(API + '/admin/answers/' + a._id)
       .then(function () {
         $scope.qAnswers[qId] = $scope.qAnswers[qId].filter(function (x) { return x._id !== a._id; });
       });
@@ -972,7 +969,7 @@ app.controller('AdminCtrl', function ($scope, $http, $location, AuthService) {
     var url = API + '/admin/suggestions?page=' + $scope.sPage + '&limit=15';
     if ($scope.sFilter.status) url += '&status=' + $scope.sFilter.status;
     if ($scope.sFilter.search) url += '&search=' + encodeURIComponent($scope.sFilter.search);
-    $http.get(url, H()).then(function (res) {
+    $http.get(url).then(function (res) {
       $scope.adminSuggestions = res.data.suggestions;
       $scope.sTotalPages = res.data.totalPages;
       $scope.sPendingCount = res.data.pendingCount || 0;
@@ -980,20 +977,20 @@ app.controller('AdminCtrl', function ($scope, $http, $location, AuthService) {
   };
 
   $scope.approveSuggestion = function (s) {
-    $http.put(API + '/admin/suggestions/' + s._id + '/approve', {}, H())
+    $http.put(API + '/admin/suggestions/' + s._id + '/approve', {})
       .then(function () { $scope.message = '✅ Suggestion approved!'; $scope.loadAdminSuggestions(); });
   };
 
   $scope.rejectSuggestion = function (s) {
     var note = $scope.statusNote[s._id] || '';
     if (!confirm('Reject this suggestion?')) return;
-    $http.put(API + '/admin/suggestions/' + s._id + '/reject', { adminNote: note }, H())
+    $http.put(API + '/admin/suggestions/' + s._id + '/reject', { adminNote: note })
       .then(function () { $scope.message = '❌ Suggestion rejected.'; $scope.loadAdminSuggestions(); });
   };
 
   $scope.setSuggestionStatus = function (s, status) {
     var note = $scope.statusNote[s._id] || '';
-    $http.put(API + '/admin/suggestions/' + s._id + '/status', { status: status, adminNote: note }, H())
+    $http.put(API + '/admin/suggestions/' + s._id + '/status', { status: status, adminNote: note })
       .then(function (res) {
         s.status = res.data.suggestion.status;
         s.adminNote = res.data.suggestion.adminNote;
@@ -1016,7 +1013,7 @@ app.controller('AdminCtrl', function ($scope, $http, $location, AuthService) {
   $scope.analytics = null;
 
   $scope.loadAnalytics = function () {
-    $http.get(API + '/admin/analytics', H()).then(function (res) { $scope.analytics = res.data; });
+    $http.get(API + '/admin/analytics').then(function (res) { $scope.analytics = res.data; });
   };
 
   // ── INIT ───────────────────────────────────────────────────────────────────

@@ -1,9 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
-
 const { User, Request, Answer, Comment, Suggestion, SuggestionComment, Notification } = require('../models');
-const SECRET = process.env.JWT_SECRET || 'SECRET_KEY_GTU_2024';
 
 // ── MIDDLEWARE ────────────────────────────────────────────────────────────────
 const auth = require('../middleware/auth');
