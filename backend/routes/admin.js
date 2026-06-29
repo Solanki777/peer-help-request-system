@@ -33,67 +33,155 @@ router.get('/users', ...G, async (req, res) => {
         res.json({ users, counts: { pending, approved, rejected, total: pending + approved + rejected } });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
-
 router.put('/users/:id', ...G, async (req, res) => {
     try {
         const allowed = [
             'status', 'role', 'name', 'enrollment', 'contact', 'dob',
-            'department', 'branch', 'semester', 'city', 'bio', 'interests',
-            'skills', 'reputation'
+            'department', 'branch', 'semester', 'city', 'bio',
+            'interests', 'skills', 'reputation'
         ];
-        const updates = {};
-        allowed.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
 
-        if (updates.skills && typeof updates.skills === 'string')
-            updates.skills = updates.skills.split(',').map(s => s.trim()).filter(Boolean);
+        const updates = {};
+
+        allowed.forEach(field => {
+            if (req.body[field] !== undefined) {
+                updates[field] = req.body[field];
+            }
+        });
+
+        if (updates.skills && typeof updates.skills === 'string') {
+            updates.skills = updates.skills
+                .split(',')
+                .map(s => s.trim())
+                .filter(Boolean);
+        }
+
         if (updates.reputation !== undefined)
             updates.reputation = parseInt(updates.reputation) || 0;
+
         if (updates.semester !== undefined)
             updates.semester = parseInt(updates.semester) || null;
-        if (updates.dob) updates.dob = new Date(updates.dob);
 
-        const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true }).select('-password');
-        if (!user) return res.status(404).json({ message: 'User not found' });
+        if (updates.dob)
+            updates.dob = new Date(updates.dob);
 
-        if (req.body.status === 'approved' || req.body.status === 'rejected') {
+        const oldUser = await User.findById(req.params.id);
+
+        if (!oldUser)
+            return res.status(404).json({ message: "User not found" });
+
+        // Check if anything actually changed
+        let changed = false;
+
+        for (const key of Object.keys(updates)) {
+            if (JSON.stringify(oldUser[key]) !== JSON.stringify(updates[key])) {
+                changed = true;
+                break;
+            }
+        }
+
+        // Nothing changed
+        if (!changed) {
+            return res.json({
+                message: "No changes detected",
+                user: oldUser
+            });
+        }
+
+        const user = await User.findByIdAndUpdate(
+            req.params.id,
+            updates,
+            { new: true }
+        ).select("-password");
+
+        // ================= ACCOUNT STATUS NOTIFICATION =================
+
+        if (oldUser.status !== user.status) {
+
             const msgs = {
                 approved: '✅ Your account has been approved! You can now log in to PeerHelp GTU.',
                 rejected: '❌ Your account was not approved. Please contact admin for more information.'
             };
+
+            if (msgs[user.status]) {
+
+                const notif = new Notification({
+                    userId: user._id,
+                    type: 'account_status',
+                    message: msgs[user.status],
+                    link: '/#!/login'
+                });
+
+                await notif.save();
+
+                req.app.get('io')
+                    .to(user._id.toString())
+                    .emit('notification', notif);
+            }
+        }
+
+        // ================= PROFILE UPDATE NOTIFICATION =================
+
+        const changes = [];
+
+        if (oldUser.name !== user.name)
+            changes.push(`👤 Name: ${oldUser.name} → ${user.name}`);
+
+        if (oldUser.department !== user.department)
+            changes.push(`🏫 Department: ${oldUser.department} → ${user.department}`);
+
+        if (oldUser.branch !== user.branch)
+            changes.push(`🌿 Branch: ${oldUser.branch} → ${user.branch}`);
+
+        if (oldUser.semester != user.semester)
+            changes.push(`📚 Semester: ${oldUser.semester} → ${user.semester}`);
+
+        if (oldUser.city !== user.city)
+            changes.push(`📍 City: ${oldUser.city} → ${user.city}`);
+
+        if (oldUser.contact !== user.contact)
+            changes.push(`📞 Contact Number updated`);
+
+        if (oldUser.bio !== user.bio)
+            changes.push(`📝 Bio updated`);
+
+        if (JSON.stringify(oldUser.skills || []) !== JSON.stringify(user.skills || []))
+            changes.push("🛠 Skills updated");
+
+        if (oldUser.interests !== user.interests)
+            changes.push("🎯 Interests updated");
+
+        if ((oldUser.reputation || 0) != (user.reputation || 0))
+            changes.push(`⭐ Reputation: ${oldUser.reputation || 0} → ${user.reputation || 0}`);
+
+        if (changes.length > 0 && oldUser.status === user.status) {
+
             const notif = new Notification({
                 userId: user._id,
-                type: 'account_status',
-                message: msgs[req.body.status],
-                link: '/#!/login'
+                type: 'profile_updated',
+                message:
+                    "📝 Your profile has been updated by the administrator.\n\n" +
+                    changes.join("\n"),
+                link: '/#!/profile'
             });
+
             await notif.save();
-            req.app.get('io').to(user._id.toString()).emit('notification', notif);
+
+            req.app.get('io')
+                .to(user._id.toString())
+                .emit('notification', notif);
         }
 
-        res.json({ message: 'User updated successfully', user });
-    } catch (err) { res.status(500).json({ message: err.message }); }
+        res.json({
+            message: 'User updated successfully',
+            user
+        });
+
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
 });
-router.delete('/questions/:id', ...G, async (req, res) => {
-    try {
-        const deleted = await Request.findById(req.params.id);
-        if (!deleted) return res.status(404).json({ message: 'Question not found' });
 
-        // Find all answers for this question
-        const answers = await Answer.find({ requestId: req.params.id }).select('_id');
-        const ids = answers.map(a => a._id);
-
-        // Cascade: delete all comments on those answers
-        if (ids.length > 0) {
-            await Comment.deleteMany({ answerId: { $in: ids } });
-            await Answer.deleteMany({ requestId: req.params.id });
-        }
-
-        // Finally delete the question itself
-        await Request.findByIdAndDelete(req.params.id);
-
-        res.json({ message: `Question and ${ids.length} answer(s) with all comments deleted successfully` });
-    } catch (err) { res.status(500).json({ message: err.message }); }
-});
 
 // ══════════════════════════════════════════════════════════════════════════════
 // QUESTION MODERATION  (includes pending approval queue)

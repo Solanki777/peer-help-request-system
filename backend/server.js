@@ -103,3 +103,16 @@ io.on('connection', (socket) => {
     }
   });
 });
+
+
+// Default route
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/../frontend/index.html');
+});
+
+// Start server
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, () => {
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
+});

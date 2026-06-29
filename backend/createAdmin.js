@@ -27,7 +27,7 @@ mongoose.connect('mongodb://localhost:27017/peerhelp').then(async () => {
     });
     console.log('✅ Admin created!');
     console.log('   Email:    admin@peerhelp.com');
-    console.log('   Password: admin123');
+    console.log('   Password: admin');
     console.log('   ⚠️  Change the password after first login!');
     process.exit(0);
 }).catch(err => { console.error(err); process.exit(1); });
